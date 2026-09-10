@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#080b11">
+<meta name="description" content="Assista canais de TV ao vivo do mundo todo, de graça, direto do navegador.">
+<title>IPTV Live — Canais Abertos</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============================== HEADER ============================== -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    <h1>IPTV<span>Live</span></h1>
+  </div>
+
+  <div class="search-wrap">
+    <input id="searchInput" type="text" inputmode="search" placeholder="Buscar canal, país ou categoria..." autocomplete="off">
+  </div>
+
+  <button id="favToggleBtn" class="icon-btn" title="Ver favoritos" aria-label="Ver favoritos">★</button>
+</header>
+
+<!-- ============================== FILTROS ============================== -->
+<nav class="filters">
+  <select id="countryFilter"><option value="">Todos os países</option></select>
+  <select id="categoryFilter"><option value="">Todas as categorias</option></select>
+  <div id="statusLine" class="status-line">carregando canais...</div>
+</nav>
+
+<!-- ============================== GRID DE CANAIS ============================== -->
+<main>
+  <div id="channelGrid" class="channel-grid" aria-live="polite"></div>
+  <div id="emptyState" class="empty-state hidden">
+    <p>Nenhum canal encontrado.</p>
+    <span>Tente limpar a busca ou trocar os filtros.</span>
+  </div>
+</main>
+
+<!-- ============================== PLAYER MODAL ============================== -->
+<div id="playerModal" class="player-modal hidden">
+  <div class="player-shell">
+    <div class="player-head">
+      <img id="playerLogo" class="player-logo" alt="">
+      <div class="player-titles">
+        <strong id="playerName">—</strong>
+        <span id="playerMeta">—</span>
+      </div>
+      <button id="playerFavBtn" class="icon-btn" title="Favoritar">☆</button>
+      <button id="playerCloseBtn" class="icon-btn" title="Fechar" aria-label="Fechar player">✕</button>
+    </div>
+    <div class="video-wrap">
+      <video id="videoEl" playsinline controls autoplay></video>
+      <div id="playerOverlay" class="player-overlay hidden">
+        <p id="playerOverlayText">Conectando ao sinal...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HLS.js: necessário para tocar streams .m3u8 em navegadores sem suporte nativo a HLS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>
