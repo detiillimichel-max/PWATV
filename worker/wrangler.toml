@@ -1,0 +1,9 @@
+name = "pwa-tv-hls-proxy"
+main = "src/index.js"
+compatibility_date = "2026-09-10"
+
+[vars]
+ALLOWED_ORIGIN = "https://detiillimichel-max.github.io"
+# Configure ALLOWED_HOSTS in the Cloudflare Worker before production.
+# Example:
+# ALLOWED_HOSTS = "stream.example.com,cdn.example.net"
