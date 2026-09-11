@@ -122,17 +122,53 @@ body{
 /* ============================================================
    GRID DE CANAIS
    ============================================================ */
-main{padding:16px;}
-.channel-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
-  gap:12px;
+main{padding:16px 0 16px 16px;}
+
+.channel-rows{
+  display:flex;
+  flex-direction:column;
+  gap:26px;
 }
+.carousel-row{min-width:0;}
+.carousel-head{
+  display:flex; align-items:baseline; gap:8px;
+  padding-right:16px;
+  margin-bottom:10px;
+}
+.carousel-title{
+  font-family:var(--font-display);
+  font-size:12.5px;
+  letter-spacing:0.6px;
+  color:var(--text);
+  margin:0;
+}
+.carousel-title .accent{color:var(--cyan);}
+.carousel-count{
+  font-size:11px;
+  color:var(--text-dim);
+}
+.carousel-track{
+  display:flex;
+  gap:12px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scroll-snap-type:x proximity;
+  -webkit-overflow-scrolling:touch;
+  padding:2px 16px 10px 0;
+  scrollbar-width:thin;
+  scrollbar-color:var(--glass-border) transparent;
+}
+.carousel-track::-webkit-scrollbar{height:5px;}
+.carousel-track::-webkit-scrollbar-thumb{background:var(--glass-border); border-radius:10px;}
+.carousel-track::-webkit-scrollbar-track{background:transparent;}
+
 .channel-card{
+  flex:0 0 108px;
+  scroll-snap-align:start;
   background:var(--glass);
   border:1px solid var(--glass-border);
   border-radius:var(--radius);
-  padding:14px 10px;
+  padding:14px 8px;
   display:flex; flex-direction:column; align-items:center; gap:8px;
   cursor:pointer;
   text-align:center;
@@ -226,16 +262,17 @@ main{padding:16px;}
    RESPONSIVE
    ============================================================ */
 @media (min-width:640px){
-  .channel-grid{grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));}
+  .channel-card{flex-basis:130px;}
 }
 @media (min-width:1000px){
-  main{padding:20px 40px;}
+  main{padding:20px 0 20px 40px;}
   .filters{padding:12px 40px;}
   .topbar{padding:14px 40px;}
+  .carousel-head{padding-right:40px;}
+  .carousel-track{padding-right:40px;}
 }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;}
 }
-
