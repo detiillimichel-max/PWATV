@@ -6,10 +6,10 @@
    - Chamadas à API de canais/streams (iptv-org): network-first, cai
      para cache quando offline.
    - Streams de vídeo (.m3u8 / .ts) e o próprio CDN do hls.js: NUNCA
-     entram no cache — são sempre buscados direto na rede.
+     entram no cache — são sempre buscados direto da rede.
    ================================================================ */
 
-const CACHE_VERSION = 'iptv-live-v1';
+const CACHE_VERSION = 'iptv-live-v2';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const API_CACHE = `${CACHE_VERSION}-api`;
 
@@ -19,8 +19,8 @@ const SHELL_FILES = [
   './style.css',
   './app.js',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+  './icon-192.png',
+  './icon-512.png',
 ];
 
 const API_HOSTS = ['iptv-org.github.io'];
@@ -98,4 +98,3 @@ async function staleWhileRevalidate(request, cacheName) {
 
   return cached || networkFetch;
 }
-
