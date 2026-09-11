@@ -13,7 +13,7 @@ const API = {
 };
 
 const FAV_KEY = 'iptv_live_favorites';
-const MAX_RENDER = 240; // limite de cards renderizados por vez (performance mobile)
+const ROW_LIMIT = 40; // limite de canais exibidos por carrossel (performance mobile)
 
 /* ---------------------------------------------------------------
    ESTADO
@@ -33,7 +33,7 @@ const state = {
    ELEMENTOS
    --------------------------------------------------------------- */
 const el = {
-  grid: document.getElementById('channelGrid'),
+  rows: document.getElementById('channelRows'),
   empty: document.getElementById('emptyState'),
   search: document.getElementById('searchInput'),
   countryFilter: document.getElementById('countryFilter'),
@@ -161,15 +161,69 @@ function getFilteredChannels() {
 }
 
 function renderGrid() {
-  const list = getFilteredChannels().slice(0, MAX_RENDER);
-  el.grid.innerHTML = '';
-  el.empty.classList.toggle('hidden', list.length > 0);
+  const filtered = getFilteredChannels();
+  el.rows.innerHTML = '';
+  el.empty.classList.toggle('hidden', filtered.length > 0);
+  if (filtered.length === 0) return;
 
   const frag = document.createDocumentFragment();
-  for (const c of list) {
-    frag.appendChild(buildChannelCard(c));
+
+  // Linha de favoritos no topo (só quando não estamos já filtrando "só favoritos")
+  if (!state.showFavoritesOnly) {
+    const favs = filtered.filter(c => state.favorites.has(c.id));
+    if (favs.length) {
+      frag.appendChild(buildCarouselRow('★ Favoritos', favs));
+    }
   }
-  el.grid.appendChild(frag);
+
+  // Demais canais agrupados por categoria
+  const groups = new Map();
+  for (const c of filtered) {
+    const key = c.category || 'outros';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  }
+
+  const sortedKeys = [...groups.keys()].sort((a, b) =>
+    (state.categories[a] || a).localeCompare(state.categories[b] || b)
+  );
+
+  for (const key of sortedKeys) {
+    const label = state.categories[key] || key;
+    frag.appendChild(buildCarouselRow(label, groups.get(key)));
+  }
+
+  el.rows.appendChild(frag);
+}
+
+function buildCarouselRow(title, channels) {
+  const row = document.createElement('section');
+  row.className = 'carousel-row';
+
+  const head = document.createElement('div');
+  head.className = 'carousel-head';
+  const h2 = document.createElement('h2');
+  h2.className = 'carousel-title';
+  h2.innerHTML = `<span class="accent">›</span> ${escapeHtml(title)}`;
+  const count = document.createElement('span');
+  count.className = 'carousel-count';
+  count.textContent = channels.length;
+  head.append(h2, count);
+
+  const track = document.createElement('div');
+  track.className = 'carousel-track';
+  for (const c of channels.slice(0, ROW_LIMIT)) {
+    track.appendChild(buildChannelCard(c));
+  }
+
+  row.append(head, track);
+  return row;
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
 }
 
 function buildChannelCard(c) {
