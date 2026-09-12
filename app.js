@@ -13,11 +13,28 @@ const API = {
 };
 const PUSH_API_BASE = String(window.IPTV_CONFIG?.pushApiBase || '').replace(/\/$/, '');
 const TRANSLATION_API_BASE = String(window.IPTV_CONFIG?.translationApiBase || '').replace(/\/$/, '');
-const WEATHER_API = 'https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto';
 const EXTERNAL_CARDS = [
   { title: 'Neural iA', subtitle: 'Ferramentas de inteligência artificial', url: 'https://detiillimichel-max.github.io/-Neural-iA/?v1', icon: 'IA', hue: 190 },
-  { title: 'Rádio América', subtitle: 'Rádio e programação ao vivo', url: 'https://detiillimichel-max.github.io/R-dio-America/', icon: 'RA', hue: 32 },
   { title: 'Hub de Jogos', subtitle: 'Jogos e entretenimento', url: 'https://detiillimichel-max.github.io/hubs-de-jogos/', icon: 'JG', hue: 275 },
+];
+const RADIO_CARDS = [
+  { title: 'Rádio América', subtitle: 'Rádio e programação ao vivo', url: 'https://detiillimichel-max.github.io/R-dio-America/', icon: 'RA', hue: 32 },
+  { title: 'Jovem Pan', subtitle: 'Notícias e rádio ao vivo', url: 'https://jovempan.com.br/ao-vivo/', icon: 'JP', hue: 350 },
+  { title: 'BandNews FM', subtitle: 'Jornalismo 24 horas', url: 'https://www.youtube.com/radiobandnewsfm', icon: 'BN', hue: 12 },
+  { title: 'CBN', subtitle: 'A rádio que toca notícia', url: 'https://cbn.globoradio.globo.com/', icon: 'CBN', hue: 205 },
+  { title: 'Alpha FM', subtitle: 'Música e entretenimento', url: 'https://www.alphafm.com.br/', icon: 'α', hue: 270 },
+  { title: 'Rádio Gaúcha', subtitle: 'Notícias e esportes', url: 'https://gauchazh.clicrbs.com.br/ao-vivo/', icon: 'RG', hue: 45 },
+  { title: 'Itatiaia', subtitle: 'Rádio de Minas Gerais', url: 'https://www.itatiaia.com.br/', icon: 'IT', hue: 160 },
+];
+const WEATHER_CITIES = [
+  { name: 'São Paulo', state: 'SP', latitude: -23.5505, longitude: -46.6333 },
+  { name: 'Rio de Janeiro', state: 'RJ', latitude: -22.9068, longitude: -43.1729 },
+  { name: 'Belo Horizonte', state: 'MG', latitude: -19.9167, longitude: -43.9345 },
+  { name: 'Brasília', state: 'DF', latitude: -15.7939, longitude: -47.8828 },
+  { name: 'Salvador', state: 'BA', latitude: -12.9777, longitude: -38.5016 },
+  { name: 'Recife', state: 'PE', latitude: -8.0476, longitude: -34.8770 },
+  { name: 'Porto Alegre', state: 'RS', latitude: -30.0346, longitude: -51.2177 },
+  { name: 'Manaus', state: 'AM', latitude: -3.1190, longitude: -60.0217 },
 ];
 const BRAZIL_BRAND_CARDS = [
   { title: 'SBT', subtitle: 'Emissora brasileira · site oficial', url: 'https://www.sbt.com.br/', icon: 'SBT', hue: 205 },
@@ -70,7 +87,7 @@ const state = {
   epgUrl: localStorage.getItem(EPG_URL_KEY) || '',
   notifications: localStorage.getItem(NOTIFY_KEY) === 'enabled',
   pushSubscription: null,
-  weather: null,
+  weather: [],
   externalUrl: '',
   language: resolveLanguage(localStorage.getItem(LANGUAGE_KEY) || detectBrowserLanguage()),
 };
@@ -332,6 +349,8 @@ function renderGrid() {
 
   if (!state.showFavoritesOnly && !state.filters.search && !state.filters.country && !state.filters.category) {
     frag.appendChild(buildBrazilRow());
+    frag.appendChild(buildRadioRow());
+    frag.appendChild(buildWeatherRow());
     const byId = new Map(state.channels.map(channel => [channel.id, channel]));
     const featured = state.channels.slice().sort((a, b) => streamScore(b) - streamScore(a)).slice(0, FEATURED_LIMIT);
     if (featured.length) frag.appendChild(buildCarouselRow(t('featured'), featured));
@@ -392,7 +411,35 @@ function buildBrazilRow() {
   brazilChannels.forEach(channel => track.appendChild(buildChannelCard(channel)));
   BRAZIL_BRAND_CARDS.forEach(card => track.appendChild(buildExternalCard({ ...card, flag: '🇧🇷' })));
   EXTERNAL_CARDS.forEach(card => track.appendChild(buildExternalCard(card)));
-  track.appendChild(buildWeatherCard());
+  row.append(head, track);
+  return row;
+}
+
+function buildRadioRow() {
+  const row = document.createElement('section');
+  row.className = 'carousel-row radio-row';
+  row.dataset.section = 'radio';
+  const head = document.createElement('div');
+  head.className = 'carousel-head';
+  head.innerHTML = '<h2 class="carousel-title"><span class="accent">›</span> 📻 Rádios ao vivo</h2><span class="carousel-count">estações brasileiras</span>';
+  const track = document.createElement('div');
+  track.className = 'carousel-track';
+  RADIO_CARDS.forEach(card => track.appendChild(buildExternalCard({ ...card, flag: '🇧🇷' })));
+  row.append(head, track);
+  return row;
+}
+
+function buildWeatherRow() {
+  const row = document.createElement('section');
+  row.className = 'carousel-row weather-row';
+  row.dataset.section = 'weather';
+  const head = document.createElement('div');
+  head.className = 'carousel-head';
+  head.innerHTML = '<h2 class="carousel-title"><span class="accent">›</span> ☀️ Meteorologia</h2><span class="carousel-count">capitais brasileiras · Open-Meteo</span>';
+  const track = document.createElement('div');
+  track.className = 'carousel-track';
+  const weatherByState = new Map(state.weather.map(item => [item.state, item]));
+  WEATHER_CITIES.forEach(city => track.appendChild(buildWeatherCard(weatherByState.get(city.state) || { ...city })));
   row.append(head, track);
   return row;
 }
@@ -415,14 +462,13 @@ function buildExternalCard(item) {
   return card;
 }
 
-function buildWeatherCard() {
+function buildWeatherCard(item) {
   const card = document.createElement('article');
   card.className = 'channel-card weather-card';
   card.dataset.section = 'weather';
-  const weather = state.weather;
-  const temperature = weather ? `${Math.round(weather.temperature)}°C` : '…';
-  const condition = weather ? weatherLabel(weather.code) : 'Open-Meteo';
-  card.innerHTML = `<div class="channel-cover" style="--cover-hue:205"><span class="cover-badge">CLIMA</span><span class="weather-icon">${weatherIcon(weather?.code)}</span><span class="weather-temp">${temperature}</span></div><div class="channel-info"><div class="channel-name">São Paulo</div><div class="channel-tag">${condition} · Open-Meteo</div></div>`;
+  const temperature = item.temperature === undefined ? '…' : `${Math.round(item.temperature)}°C`;
+  const condition = item.code === undefined ? 'Open-Meteo' : weatherLabel(item.code);
+  card.innerHTML = `<div class="channel-cover" style="--cover-hue:205"><span class="cover-badge">${item.state}</span><span class="weather-icon">${weatherIcon(item.code)}</span><span class="weather-temp">${temperature}</span></div><div class="channel-info"><div class="channel-name">${escapeHtml(item.name)}</div><div class="channel-tag">${condition} · Open-Meteo</div></div>`;
   return card;
 }
 
@@ -452,8 +498,8 @@ function navigateSection(section) {
     renderGrid();
     document.querySelector('main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  if (section === 'weather') document.querySelector('.weather-card')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' });
-  if (section === 'radio') openExternalCard(EXTERNAL_CARDS.find(item => item.title === 'Rádio América'));
+  if (section === 'weather') document.querySelector('.weather-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (section === 'radio') document.querySelector('.radio-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   if (section === 'ai') openExternalCard(EXTERNAL_CARDS.find(item => item.title === 'Neural iA'));
 }
 
@@ -505,12 +551,16 @@ function streamScore(channel) {
 }
 
 async function loadWeather() {
-  try {
-    const response = await fetch(WEATHER_API, { cache: 'no-store' });
-    if (!response.ok) throw new Error('weather');
-    const data = await response.json();
-    state.weather = { temperature: data.current.temperature_2m, code: data.current.weather_code };
-  } catch { state.weather = null; }
+  const results = await Promise.all(WEATHER_CITIES.map(async city => {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto`;
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) throw new Error('weather');
+      const data = await response.json();
+      return { ...city, temperature: data.current.temperature_2m, code: data.current.weather_code, wind: data.current.wind_speed_10m };
+    } catch { return { ...city }; }
+  }));
+  state.weather = results;
 }
 
 function weatherIcon(code) { if (code === undefined) return '☁'; if (code === 0) return '☀'; if (code < 4) return '⛅'; if (code < 80) return '☁'; return '☂'; }

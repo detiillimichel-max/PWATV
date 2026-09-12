@@ -46,19 +46,22 @@ O primeiro carrossel apresenta a seção **Brasil em destaque**, com canais bras
 - GloboNews.
 - Record.
 - Neural iA.
-- Rádio América.
 - Hub de Jogos.
-- Meteorologia Open-Meteo.
+- Meteorologia Open-Meteo em um carrossel próprio.
 
 Cards externos abrem inicialmente em um modal com `iframe`. Alguns sites enviam `X-Frame-Options` ou `Content-Security-Policy` e bloqueiam incorporação. Nessa situação, o modal mostra o fallback e o botão de abrir em nova aba preserva a navegação sem perder o contexto do PWA.
+
+### Rádios ao vivo
+
+O carrossel de rádio reúne Rádio América, Jovem Pan, BandNews FM, CBN, Alpha FM, Rádio Gaúcha e Itatiaia. Cada card usa o link oficial da estação e respeita o fallback para nova aba quando a incorporação for bloqueada.
 
 ### Navegação inferior
 
 A barra inferior inspirada em aplicativos de conteúdo usa Lucide Icons e organiza o app por biblioteca:
 
 - **Canais:** retorna à área principal.
-- **Meteorologia:** rola até o card Open-Meteo.
-- **Rádio:** abre a Rádio América no modal incorporado ou em nova aba.
+- **Meteorologia:** rola até o carrossel Open-Meteo com oito capitais brasileiras.
+- **Rádio:** rola até o carrossel de estações brasileiras.
 - **Neural IA:** abre o card Neural iA no modal incorporado ou em nova aba.
 
 ### Favoritos e histórico
@@ -135,7 +138,7 @@ A resposta deve conter `translation` ou `translatedText`. Se a API não estiver 
 
 ### Clima
 
-O card meteorológico usa a API Open-Meteo para obter condições atuais de São Paulo:
+O carrossel meteorológico usa a API Open-Meteo para obter condições atuais de São Paulo, Rio de Janeiro, Belo Horizonte, Brasília, Salvador, Recife, Porto Alegre e Manaus:
 
 ```text
 https://api.open-meteo.com/v1/forecast
