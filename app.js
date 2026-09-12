@@ -26,6 +26,7 @@ const state = {
   filters: { search: '', country: '', category: '' },
   showFavoritesOnly: false,
   viewMode: localStorage.getItem('iptv_live_view_mode') || 'carousel',
+  preview: { card: null, video: null, hls: null },
   hls: null,
   currentChannelId: null,
 };
@@ -257,6 +258,14 @@ function buildChannelCard(c) {
   cover.className = 'channel-cover';
   cover.style.setProperty('--cover-hue', hueForChannel(c.name));
 
+  const previewVideo = document.createElement('video');
+  previewVideo.className = 'channel-preview';
+  previewVideo.muted = true;
+  previewVideo.loop = true;
+  previewVideo.playsInline = true;
+  previewVideo.setAttribute('aria-hidden', 'true');
+  previewVideo.preload = 'none';
+
   const category = document.createElement('span');
   category.className = 'cover-badge';
   category.textContent = state.categories[c.category] || 'TV';
@@ -264,6 +273,13 @@ function buildChannelCard(c) {
   const live = document.createElement('span');
   live.className = 'live-badge';
   live.innerHTML = '<i></i> AO VIVO';
+
+  const previewButton = document.createElement('span');
+  previewButton.className = 'preview-button';
+  previewButton.textContent = '▶ Prévia';
+  previewButton.setAttribute('role', 'button');
+  previewButton.setAttribute('tabindex', '0');
+  previewButton.setAttribute('aria-label', `Assistir prévia de ${c.name}`);
 
   const logoWrap = document.createElement('div');
   logoWrap.className = 'channel-logo-wrap';
@@ -291,7 +307,7 @@ function buildChannelCard(c) {
   favorite.textContent = state.favorites.has(c.id) ? '★' : '☆';
   if (state.favorites.has(c.id)) favorite.classList.add('is-favorite');
 
-  cover.append(category, live, logoWrap, favorite);
+  cover.append(previewVideo, category, live, logoWrap, favorite, previewButton);
 
   const info = document.createElement('div');
   info.className = 'channel-info';
@@ -305,8 +321,62 @@ function buildChannelCard(c) {
 
   info.append(name, tag);
   card.append(cover, info);
+  const startPreview = (event) => {
+    if (event) event.stopPropagation();
+    if (state.preview.card === card) return;
+    stopPreview();
+    state.preview.card = card;
+    state.preview.video = previewVideo;
+    card.classList.add('preview-active');
+    previewButton.textContent = '■ Parar';
+    previewVideo.src = c.url;
+    previewVideo.play().catch(() => attachPreviewHls(previewVideo, c.url));
+  };
+  const stopCardPreview = (event) => {
+    if (event) event.stopPropagation();
+    if (state.preview.card === card) stopPreview();
+  };
+  previewButton.addEventListener('click', (event) => {
+    if (state.preview.card === card) stopCardPreview(event);
+    else startPreview(event);
+  });
+  previewButton.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      previewButton.click();
+    }
+  });
+  card.addEventListener('pointerenter', () => { if (window.matchMedia('(hover: hover)').matches) startPreview(); });
+  card.addEventListener('pointerleave', () => { if (window.matchMedia('(hover: hover)').matches) stopCardPreview(); });
   card.addEventListener('click', () => openPlayer(c));
   return card;
+}
+
+function attachPreviewHls(video, url) {
+  if (state.preview.card && state.preview.video === video && window.Hls && Hls.isSupported()) {
+    if (state.preview.hls) state.preview.hls.destroy();
+    const hls = new Hls({ maxBufferLength: 8, maxMaxBufferLength: 16 });
+    state.preview.hls = hls;
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+  }
+}
+
+function stopPreview() {
+  const { card, video, hls } = state.preview;
+  if (hls) hls.destroy();
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+  if (card) {
+    card.classList.remove('preview-active');
+    const button = card.querySelector('.preview-button');
+    if (button) button.textContent = '▶ Prévia';
+  }
+  state.preview = { card: null, video: null, hls: null };
 }
 
 function initials(name) {
@@ -368,6 +438,7 @@ function bindEvents() {
    PLAYER (HLS)
    --------------------------------------------------------------- */
 function openPlayer(channel) {
+  stopPreview();
   state.currentChannelId = channel.id;
   el.playerName.textContent = channel.name;
   el.playerMeta.textContent = [state.countries[channel.country], state.categories[channel.category]].filter(Boolean).join(' · ') || '—';
