@@ -19,6 +19,7 @@ PWA responsivo para descobrir e assistir canais de televisão ao vivo diretament
 | Picture-in-Picture | Mantém o player flutuante durante a navegação quando o navegador suporta a API. |
 | Chromecast | Botão de transmissão usando o Google Cast SDK quando disponível. |
 | Notificações | Permissão acionada pelo usuário para avisar novos canais, programação EPG favorita e atualizações enquanto o app está ativo. |
+| i18n | Interface disponível em Português, Inglês e Espanhol, com idioma salvo no navegador e detecção inicial do idioma do sistema. |
 | Push service worker | O service worker trata eventos push recebidos por um backend compatível com VAPID. |
 | EPG | Painel de grade horária com fonte JSON configurável e cache local. |
 | PWA/offline | Manifesto instalável e cache do app shell pelo service worker. |

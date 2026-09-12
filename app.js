@@ -32,6 +32,11 @@ const GENRE_RULES = [
   { label: 'Música', terms: ['music', 'musica', 'música', 'radio', 'dance', 'hits', 'mtv'] },
   { label: 'Entretenimento', terms: ['entertainment', 'entretenimento', 'reality', 'series', 'série', 'serie', 'comedy', 'comedia', 'comédia', 'lifestyle'] },
 ];
+const I18N = {
+  'pt-BR': { searchPlaceholder: 'Buscar canal, país ou categoria...', allCountries: 'Todos os países', allCategories: 'Todas as categorias', loadingChannels: 'carregando canais...', noChannels: 'Nenhum canal encontrado.', tryFilters: 'Tente limpar a busca ou trocar os filtros.', gridView: 'Alternar para grade', carouselView: 'Alternar para carrossel', enableNotifications: 'Ativar notificações', notificationsOn: 'Notificações ativadas', openEpg: 'Abrir programação EPG', viewFavorites: 'Ver favoritos', scheduleLabel: 'GRADE HORÁRIA', schedule: 'Programação', closeSchedule: 'Fechar programação', configureEpg: 'Configurar fonte EPG', featured: 'Ao vivo agora', recent: 'Recentemente assistidos', mostWatched: 'Mais assistidos', favorites: 'Favoritos', foundOne: 'canal encontrado', foundMany: 'canais encontrados', available: 'canais disponíveis', live: 'AO VIVO', preview: 'Prévia', stop: 'Parar', connecting: 'Conectando ao sinal...', unavailable: 'Sinal indisponível para este canal.', noEpg: 'Configure uma fonte JSON EPG para ver a grade horária.', epgUnavailable: 'A fonte EPG não retornou uma grade compatível.', localTime: 'programas · horário local', genres: { 'Notícias': 'Notícias', 'Esportes': 'Esportes', 'Filmes': 'Filmes', 'Infantil': 'Infantil', 'Entretenimento': 'Entretenimento', 'Documentários': 'Documentários', 'Música': 'Música', 'Geral': 'Geral' } },
+  en: { searchPlaceholder: 'Search channel, country or category...', allCountries: 'All countries', allCategories: 'All categories', loadingChannels: 'loading channels...', noChannels: 'No channel found.', tryFilters: 'Clear the search or change the filters.', gridView: 'Switch to grid', carouselView: 'Switch to carousel', enableNotifications: 'Enable notifications', notificationsOn: 'Notifications enabled', openEpg: 'Open EPG schedule', viewFavorites: 'View favorites', scheduleLabel: 'SCHEDULE', schedule: 'Programming', closeSchedule: 'Close schedule', configureEpg: 'Configure EPG source', featured: 'Live now', recent: 'Recently watched', mostWatched: 'Most watched', favorites: 'Favorites', foundOne: 'channel found', foundMany: 'channels found', available: 'channels available', live: 'LIVE', preview: 'Preview', stop: 'Stop', connecting: 'Connecting to signal...', unavailable: 'Signal unavailable for this channel.', noEpg: 'Configure a JSON EPG source to view the schedule.', epgUnavailable: 'The EPG source returned no compatible schedule.', localTime: 'programs · local time', genres: { 'Notícias': 'News', 'Esportes': 'Sports', 'Filmes': 'Movies', 'Infantil': 'Kids', 'Entretenimento': 'Entertainment', 'Documentários': 'Documentaries', 'Música': 'Music', 'Geral': 'General' } },
+  es: { searchPlaceholder: 'Buscar canal, país o categoría...', allCountries: 'Todos los países', allCategories: 'Todas las categorías', loadingChannels: 'cargando canales...', noChannels: 'No se encontró ningún canal.', tryFilters: 'Limpia la búsqueda o cambia los filtros.', gridView: 'Cambiar a cuadrícula', carouselView: 'Cambiar a carrusel', enableNotifications: 'Activar notificaciones', notificationsOn: 'Notificaciones activadas', openEpg: 'Abrir programación EPG', viewFavorites: 'Ver favoritos', scheduleLabel: 'HORARIO', schedule: 'Programación', closeSchedule: 'Cerrar programación', configureEpg: 'Configurar fuente EPG', featured: 'En vivo ahora', recent: 'Vistos recientemente', mostWatched: 'Más vistos', favorites: 'Favoritos', foundOne: 'canal encontrado', foundMany: 'canales encontrados', available: 'canales disponibles', live: 'EN VIVO', preview: 'Vista previa', stop: 'Detener', connecting: 'Conectando a la señal...', unavailable: 'Señal no disponible para este canal.', noEpg: 'Configura una fuente JSON EPG para ver el horario.', epgUnavailable: 'La fuente EPG no devolvió un horario compatible.', localTime: 'programas · hora local', genres: { 'Notícias': 'Noticias', 'Esportes': 'Deportes', 'Filmes': 'Películas', 'Infantil': 'Infantil', 'Entretenimento': 'Entretenimiento', 'Documentários': 'Documentales', 'Música': 'Música', 'Geral': 'General' } },
+};
 
 /* ---------------------------------------------------------------
    ESTADO
@@ -53,6 +58,7 @@ const state = {
   epgUrl: localStorage.getItem(EPG_URL_KEY) || '',
   notifications: localStorage.getItem(NOTIFY_KEY) === 'enabled',
   pushSubscription: null,
+  language: localStorage.getItem('iptv_live_language') || (navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('en') ? 'en' : 'pt-BR'),
 };
 
 /* ---------------------------------------------------------------
@@ -62,6 +68,7 @@ const el = {
   rows: document.getElementById('channelRows'),
   empty: document.getElementById('emptyState'),
   search: document.getElementById('searchInput'),
+  languageSelect: document.getElementById('languageSelect'),
   countryFilter: document.getElementById('countryFilter'),
   categoryFilter: document.getElementById('categoryFilter'),
   status: document.getElementById('statusLine'),
@@ -93,8 +100,29 @@ const el = {
    --------------------------------------------------------------- */
 init();
 
+function t(key) {
+  const dictionary = I18N[state.language] || I18N['pt-BR'];
+  return dictionary[key] || I18N['pt-BR'][key] || key;
+}
+
+function genreLabel(label) {
+  return (I18N[state.language] || I18N['pt-BR']).genres[label] || label;
+}
+
+function applyLanguage() {
+  const dictionary = I18N[state.language] || I18N['pt-BR'];
+  document.documentElement.lang = state.language;
+  el.languageSelect.value = state.language;
+  document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = dictionary[node.dataset.i18n] || node.textContent; });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(node => { node.placeholder = dictionary[node.dataset.i18nPlaceholder] || node.placeholder; });
+  document.querySelectorAll('[data-i18n-title]').forEach(node => { const value = dictionary[node.dataset.i18nTitle] || node.title; node.title = value; node.setAttribute('aria-label', value); });
+  el.epgStatus.textContent = state.epg.length ? `${state.epg.length} ${t('localTime')}` : t('noEpg');
+  renderGrid();
+}
+
 async function init() {
   registerServiceWorker();
+  applyLanguage();
   bindEvents();
   hydratePushSubscription().catch(() => {});
 
@@ -246,14 +274,14 @@ function renderGrid() {
   el.empty.classList.toggle('hidden', filtered.length > 0);
   const hasActiveFilter = state.filters.search || state.filters.country || state.filters.category || state.showFavoritesOnly;
   if (hasActiveFilter) {
-    el.status.textContent = `${filtered.length} ${filtered.length === 1 ? 'canal encontrado' : 'canais encontrados'}`;
+    el.status.textContent = `${filtered.length} ${filtered.length === 1 ? t('foundOne') : t('foundMany')}`;
   } else {
-    el.status.textContent = `${state.channels.length} canais disponíveis`;
+    el.status.textContent = `${state.channels.length} ${t('available')}`;
   }
   el.rows.classList.toggle('grid-mode', state.viewMode === 'grid');
   el.viewToggleBtn.classList.toggle('active', state.viewMode === 'grid');
   el.viewToggleBtn.textContent = state.viewMode === 'grid' ? '☰' : '▦';
-  el.viewToggleBtn.title = state.viewMode === 'grid' ? 'Alternar para carrossel' : 'Alternar para grade';
+  el.viewToggleBtn.title = state.viewMode === 'grid' ? t('carouselView') : t('gridView');
   el.viewToggleBtn.setAttribute('aria-label', el.viewToggleBtn.title);
   if (filtered.length === 0) return;
 
@@ -262,22 +290,22 @@ function renderGrid() {
   if (!state.showFavoritesOnly && !state.filters.search && !state.filters.country && !state.filters.category) {
     const byId = new Map(state.channels.map(channel => [channel.id, channel]));
     const featured = state.channels.slice().sort((a, b) => streamScore(b) - streamScore(a)).slice(0, FEATURED_LIMIT);
-    if (featured.length) frag.appendChild(buildCarouselRow('Ao vivo agora', featured));
+    if (featured.length) frag.appendChild(buildCarouselRow(t('featured'), featured));
     const recent = state.history
       .slice().sort((a, b) => b.lastWatched - a.lastWatched)
       .map(item => byId.get(item.id)).filter(Boolean).slice(0, 12);
     const mostWatched = state.history
       .slice().sort((a, b) => b.plays - a.plays || b.lastWatched - a.lastWatched)
       .map(item => byId.get(item.id)).filter(Boolean).slice(0, 12);
-    if (recent.length) frag.appendChild(buildCarouselRow('Recentemente assistidos', recent));
-    if (mostWatched.length) frag.appendChild(buildCarouselRow('Mais assistidos', mostWatched));
+    if (recent.length) frag.appendChild(buildCarouselRow(t('recent'), recent));
+    if (mostWatched.length) frag.appendChild(buildCarouselRow(t('mostWatched'), mostWatched));
   }
 
   // Linha de favoritos no topo (só quando não estamos já filtrando "só favoritos")
   if (!state.showFavoritesOnly) {
     const favs = filtered.filter(c => state.favorites.has(c.id));
     if (favs.length) {
-      frag.appendChild(buildCarouselRow('★ Favoritos', favs));
+      frag.appendChild(buildCarouselRow(`★ ${t('favorites')}`, favs));
     }
   }
 
@@ -294,7 +322,7 @@ function renderGrid() {
   );
 
   for (const key of sortedKeys) {
-    frag.appendChild(buildCarouselRow(key, groups.get(key)));
+    frag.appendChild(buildCarouselRow(genreLabel(key), groups.get(key)));
   }
 
   el.rows.appendChild(frag);
@@ -349,14 +377,14 @@ function streamScore(channel) {
 
 function renderEPG() {
   if (!state.epg.length) {
-    el.epgStatus.textContent = state.epgUrl ? 'A fonte não retornou programação compatível.' : 'Configure uma fonte JSON EPG para ver a grade horária.';
+    el.epgStatus.textContent = state.epgUrl ? t('epgUnavailable') : t('noEpg');
     el.epgList.innerHTML = '';
     return;
   }
   const now = Date.now();
   const byId = new Map(state.channels.map(channel => [channel.id, channel]));
   const active = state.epg.filter(item => Date.parse(item.end) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).slice(0, 40);
-  el.epgStatus.textContent = `${active.length} programas · horário local`;
+  el.epgStatus.textContent = `${active.length} ${t('localTime')}`;
   el.epgList.innerHTML = active.map(item => {
     const channel = byId.get(item.channelId);
     const channelName = channel ? escapeHtml(channel.name) : escapeHtml(item.channelId);
@@ -426,7 +454,8 @@ async function subscribeToPush() {
 function updateNotificationButton() {
   el.notifyBtn.classList.toggle('active', state.notifications);
   el.notifyBtn.textContent = state.notifications ? '●' : '♢';
-  el.notifyBtn.title = state.notifications ? 'Notificações ativadas' : 'Ativar notificações';
+  el.notifyBtn.title = state.notifications ? t('notificationsOn') : t('enableNotifications');
+  el.notifyBtn.setAttribute('aria-label', el.notifyBtn.title);
 }
 
 function notify(title, body) {
@@ -470,15 +499,15 @@ function buildChannelCard(c) {
 
   const category = document.createElement('span');
   category.className = 'cover-badge';
-  category.textContent = genreForChannel(c);
+  category.textContent = genreLabel(genreForChannel(c));
 
   const live = document.createElement('span');
   live.className = 'live-badge';
-  live.innerHTML = '<i></i> AO VIVO';
+  live.innerHTML = `<i></i> ${t('live')}`;
 
   const previewButton = document.createElement('span');
   previewButton.className = 'preview-button';
-  previewButton.textContent = '▶ Prévia';
+  previewButton.textContent = `▶ ${t('preview')}`;
   previewButton.setAttribute('role', 'button');
   previewButton.setAttribute('tabindex', '0');
   previewButton.setAttribute('aria-label', `Assistir prévia de ${c.name}`);
@@ -530,7 +559,7 @@ function buildChannelCard(c) {
     state.preview.card = card;
     state.preview.video = previewVideo;
     card.classList.add('preview-active');
-    previewButton.textContent = '■ Parar';
+    previewButton.textContent = `■ ${t('stop')}`;
     previewVideo.src = c.url;
     previewVideo.play().catch(() => attachPreviewHls(previewVideo, c.url));
   };
@@ -576,7 +605,7 @@ function stopPreview() {
   if (card) {
     card.classList.remove('preview-active');
     const button = card.querySelector('.preview-button');
-    if (button) button.textContent = '▶ Prévia';
+    if (button) button.textContent = `▶ ${t('preview')}`;
   }
   state.preview = { card: null, video: null, hls: null };
 }
@@ -600,6 +629,12 @@ function flagForCountry(code) {
    EVENTOS DE UI
    --------------------------------------------------------------- */
 function bindEvents() {
+  el.languageSelect.addEventListener('change', () => {
+    state.language = el.languageSelect.value;
+    localStorage.setItem('iptv_live_language', state.language);
+    applyLanguage();
+  });
+
   el.search.addEventListener('input', () => {
     state.filters.search = el.search.value.trim().toLowerCase();
     renderGrid();

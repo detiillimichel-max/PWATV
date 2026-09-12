@@ -22,39 +22,42 @@
   </div>
 
   <div class="search-wrap">
-    <input id="searchInput" type="text" inputmode="search" placeholder="Buscar canal, país ou categoria..." autocomplete="off">
+    <input id="searchInput" type="text" inputmode="search" data-i18n-placeholder="searchPlaceholder" placeholder="Buscar canal, país ou categoria..." autocomplete="off">
   </div>
 
-  <button id="viewToggleBtn" class="icon-btn view-toggle" title="Alternar para grade" aria-label="Alternar para grade">▦</button>
-  <button id="notifyBtn" class="icon-btn" title="Ativar notificações" aria-label="Ativar notificações">♢</button>
-  <button id="epgBtn" class="icon-btn" title="Abrir programação EPG" aria-label="Abrir programação EPG">▤</button>
-  <button id="favToggleBtn" class="icon-btn" title="Ver favoritos" aria-label="Ver favoritos">★</button>
+  <select id="languageSelect" class="language-select" title="Idioma" aria-label="Idioma">
+    <option value="pt-BR">PT</option><option value="en">EN</option><option value="es">ES</option>
+  </select>
+  <button id="viewToggleBtn" class="icon-btn view-toggle" data-i18n-title="gridView" title="Alternar para grade" aria-label="Alternar para grade">▦</button>
+  <button id="notifyBtn" class="icon-btn" data-i18n-title="enableNotifications" title="Ativar notificações" aria-label="Ativar notificações">♢</button>
+  <button id="epgBtn" class="icon-btn" data-i18n-title="openEpg" title="Abrir programação EPG" aria-label="Abrir programação EPG">▤</button>
+  <button id="favToggleBtn" class="icon-btn" data-i18n-title="viewFavorites" title="Ver favoritos" aria-label="Ver favoritos">★</button>
 </header>
 
 <!-- ============================== FILTROS ============================== -->
 <nav class="filters">
-  <select id="countryFilter"><option value="">Todos os países</option></select>
-  <select id="categoryFilter"><option value="">Todas as categorias</option></select>
-  <div id="statusLine" class="status-line">carregando canais...</div>
+  <select id="countryFilter"><option value="" data-i18n="allCountries">Todos os países</option></select>
+  <select id="categoryFilter"><option value="" data-i18n="allCategories">Todas as categorias</option></select>
+  <div id="statusLine" class="status-line" data-i18n="loadingChannels">carregando canais...</div>
 </nav>
 
 <!-- ============================== GRID DE CANAIS ============================== -->
 <main>
   <div id="channelRows" class="channel-rows" aria-live="polite"></div>
   <div id="emptyState" class="empty-state hidden">
-    <p>Nenhum canal encontrado.</p>
-    <span>Tente limpar a busca ou trocar os filtros.</span>
+    <p data-i18n="noChannels">Nenhum canal encontrado.</p>
+    <span data-i18n="tryFilters">Tente limpar a busca ou trocar os filtros.</span>
   </div>
 </main>
 
-<aside id="epgPanel" class="epg-panel hidden" aria-label="Programação EPG">
+<aside id="epgPanel" class="epg-panel hidden" data-i18n-aria-label="epgSchedule" aria-label="Programação EPG">
   <div class="epg-head">
-    <div><span class="eyebrow">GRADE HORÁRIA</span><h2>Programação</h2></div>
-    <button id="epgCloseBtn" class="icon-btn" title="Fechar programação" aria-label="Fechar programação">✕</button>
+    <div><span class="eyebrow" data-i18n="scheduleLabel">GRADE HORÁRIA</span><h2 data-i18n="schedule">Programação</h2></div>
+    <button id="epgCloseBtn" class="icon-btn" data-i18n-title="closeSchedule" title="Fechar programação" aria-label="Fechar programação">✕</button>
   </div>
   <p id="epgStatus" class="epg-status">Nenhuma fonte EPG configurada.</p>
   <div id="epgList" class="epg-list"></div>
-  <button id="epgSourceBtn" class="text-btn">Configurar fonte EPG</button>
+  <button id="epgSourceBtn" class="text-btn" data-i18n="configureEpg">Configurar fonte EPG</button>
 </aside>
 
 <!-- ============================== PLAYER MODAL ============================== -->
