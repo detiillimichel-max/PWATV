@@ -32,6 +32,10 @@ window.IPTV_LOCALES = {
     "noEpg": "Configure a JSON EPG source to view the schedule.",
     "epgUnavailable": "The EPG source returned no compatible schedule.",
     "localTime": "programs · local time",
+    "channelsNav": "Channels",
+    "weatherNav": "Weather",
+    "radioNav": "Radio",
+    "aiNav": "Neural AI",
     "genres": {
       "Notícias": "News",
       "Esportes": "Sports",
@@ -75,6 +79,10 @@ window.IPTV_LOCALES = {
     "noEpg": "Configura una fuente JSON EPG para ver el horario.",
     "epgUnavailable": "La fuente EPG no devolvió un horario compatible.",
     "localTime": "programas · hora local",
+    "channelsNav": "Canales",
+    "weatherNav": "Meteorología",
+    "radioNav": "Radio",
+    "aiNav": "Neural IA",
     "genres": {
       "Notícias": "Noticias",
       "Esportes": "Deportes",
@@ -118,6 +126,10 @@ window.IPTV_LOCALES = {
     "noEpg": "Configure uma fonte JSON EPG para ver a grade horária.",
     "epgUnavailable": "A fonte EPG não retornou uma grade compatível.",
     "localTime": "programas · horário local",
+    "channelsNav": "Canais",
+    "weatherNav": "Meteorologia",
+    "radioNav": "Rádio",
+    "aiNav": "Neural IA",
     "genres": {
       "Notícias": "Notícias",
       "Esportes": "Esportes",

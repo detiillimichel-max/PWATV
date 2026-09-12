@@ -71,6 +71,7 @@ const state = {
   notifications: localStorage.getItem(NOTIFY_KEY) === 'enabled',
   pushSubscription: null,
   weather: null,
+  externalUrl: '',
   language: resolveLanguage(localStorage.getItem(LANGUAGE_KEY) || detectBrowserLanguage()),
 };
 
@@ -94,6 +95,12 @@ const el = {
   playerName: document.getElementById('playerName'),
   playerMeta: document.getElementById('playerMeta'),
   playerDescription: document.getElementById('playerDescription'),
+  externalModal: document.getElementById('externalModal'),
+  externalFrame: document.getElementById('externalFrame'),
+  externalTitle: document.getElementById('externalTitle'),
+  externalUrl: document.getElementById('externalUrl'),
+  externalOpenBtn: document.getElementById('externalOpenBtn'),
+  externalCloseBtn: document.getElementById('externalCloseBtn'),
   playerPipBtn: document.getElementById('playerPipBtn'),
   playerCastBtn: document.getElementById('playerCastBtn'),
   notifyBtn: document.getElementById('notifyBtn'),
@@ -368,6 +375,7 @@ function renderGrid() {
 function buildBrazilRow() {
   const row = document.createElement('section');
   row.className = 'carousel-row editorial-row';
+  row.dataset.section = 'channels';
   const head = document.createElement('div');
   head.className = 'carousel-head';
   head.innerHTML = `<h2 class="carousel-title"><span class="accent">›</span> 🇧🇷 Brasil em destaque</h2><span class="carousel-count">TV · clima · projetos</span>`;
@@ -389,6 +397,7 @@ function buildExternalCard(item) {
   card.href = item.url;
   card.target = '_blank';
   card.rel = 'noopener noreferrer';
+  card.addEventListener('click', event => { event.preventDefault(); openExternalCard(item); });
   const cover = document.createElement('div');
   cover.className = 'channel-cover';
   cover.style.setProperty('--cover-hue', item.hue);
@@ -403,11 +412,35 @@ function buildExternalCard(item) {
 function buildWeatherCard() {
   const card = document.createElement('article');
   card.className = 'channel-card weather-card';
+  card.dataset.section = 'weather';
   const weather = state.weather;
   const temperature = weather ? `${Math.round(weather.temperature)}°C` : '…';
   const condition = weather ? weatherLabel(weather.code) : 'Open-Meteo';
   card.innerHTML = `<div class="channel-cover" style="--cover-hue:205"><span class="cover-badge">CLIMA</span><span class="weather-icon">${weatherIcon(weather?.code)}</span><span class="weather-temp">${temperature}</span></div><div class="channel-info"><div class="channel-name">São Paulo</div><div class="channel-tag">${condition} · Open-Meteo</div></div>`;
   return card;
+}
+
+function openExternalCard(item) {
+  if (!item) return;
+  state.externalUrl = item.url;
+  el.externalTitle.textContent = item.title;
+  el.externalUrl.textContent = item.url;
+  el.externalFrame.src = item.url;
+  el.externalModal.classList.remove('hidden');
+}
+
+function closeExternalCard() {
+  el.externalFrame.src = 'about:blank';
+  el.externalModal.classList.add('hidden');
+  state.externalUrl = '';
+}
+
+function navigateSection(section) {
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.section === section));
+  if (section === 'channels') document.querySelector('main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (section === 'weather') document.querySelector('.weather-card')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' });
+  if (section === 'radio') openExternalCard(EXTERNAL_CARDS.find(item => item.title === 'Rádio América'));
+  if (section === 'ai') openExternalCard(EXTERNAL_CARDS.find(item => item.title === 'Neural iA'));
 }
 
 function buildCarouselRow(title, channels) {
@@ -790,11 +823,16 @@ function bindEvents() {
   el.playerFavBtn.addEventListener('click', toggleCurrentFavorite);
   el.playerPipBtn.addEventListener('click', togglePictureInPicture);
   el.playerCastBtn.addEventListener('click', castCurrentChannel);
+  el.externalCloseBtn.addEventListener('click', closeExternalCard);
+  el.externalModal.addEventListener('click', event => { if (event.target === el.externalModal) closeExternalCard(); });
+  el.externalOpenBtn.addEventListener('click', () => { if (state.externalUrl) window.open(state.externalUrl, '_blank', 'noopener,noreferrer'); });
+  document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => navigateSection(item.dataset.section)));
   el.notifyBtn.addEventListener('click', toggleNotifications);
   el.epgBtn.addEventListener('click', () => { el.epgPanel.classList.remove('hidden'); renderEPG(); });
   el.epgCloseBtn.addEventListener('click', () => el.epgPanel.classList.add('hidden'));
   el.epgSourceBtn.addEventListener('click', configureEPGSource);
   updateNotificationButton();
+  window.lucide?.createIcons();
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closePlayer();

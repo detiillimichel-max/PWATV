@@ -30,6 +30,10 @@
   "noEpg": "Configure uma fonte JSON EPG para ver a grade horária.",
   "epgUnavailable": "A fonte EPG não retornou uma grade compatível.",
   "localTime": "programas · horário local",
+  "channelsNav": "Canais",
+  "weatherNav": "Meteorologia",
+  "radioNav": "Rádio",
+  "aiNav": "Neural IA",
   "genres": {
     "Notícias": "Notícias",
     "Esportes": "Esportes",

@@ -84,9 +84,29 @@
   </div>
 </div>
 
+<div id="externalModal" class="player-modal hidden">
+  <div class="external-shell">
+    <div class="player-head">
+      <div class="player-titles"><strong id="externalTitle">—</strong><span id="externalUrl">—</span></div>
+      <button id="externalOpenBtn" class="icon-btn" title="Abrir em nova aba" aria-label="Abrir em nova aba"><i data-lucide="external-link"></i></button>
+      <button id="externalCloseBtn" class="icon-btn" title="Fechar" aria-label="Fechar">✕</button>
+    </div>
+    <iframe id="externalFrame" title="Conteúdo externo" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+    <p class="external-fallback">Se o site bloquear incorporação, use o botão de abrir em nova aba.</p>
+  </div>
+</div>
+
+<nav class="bottom-nav" aria-label="Biblioteca">
+  <button class="nav-item active" data-section="channels"><i data-lucide="tv-2"></i><span data-i18n="channelsNav">Canais</span></button>
+  <button class="nav-item" data-section="weather"><i data-lucide="cloud-sun"></i><span data-i18n="weatherNav">Meteorologia</span></button>
+  <button class="nav-item" data-section="radio"><i data-lucide="radio"></i><span data-i18n="radioNav">Rádio</span></button>
+  <button class="nav-item" data-section="ai"><i data-lucide="brain-circuit"></i><span data-i18n="aiNav">Neural IA</span></button>
+</nav>
+
 <!-- HLS.js: necessário para tocar streams .m3u8 em navegadores sem suporte nativo a HLS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js" defer></script>
 <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" defer></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
 <script src="config.js" defer></script>
 <script src="locales.js" defer></script>
 <script src="app.js" defer></script>

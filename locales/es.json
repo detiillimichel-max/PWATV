@@ -30,5 +30,9 @@
   "noEpg": "Configura una fuente JSON EPG para ver el horario.",
   "epgUnavailable": "La fuente EPG no devolvió un horario compatible.",
   "localTime": "programas · hora local",
+  "channelsNav": "Canales",
+  "weatherNav": "Meteorología",
+  "radioNav": "Radio",
+  "aiNav": "Neural IA",
   "genres": { "Notícias": "Noticias", "Esportes": "Deportes", "Filmes": "Películas", "Infantil": "Infantil", "Entretenimento": "Entretenimiento", "Documentários": "Documentales", "Música": "Música", "Geral": "General" }
 }
