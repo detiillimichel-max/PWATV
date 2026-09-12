@@ -9,7 +9,7 @@
      entram no cache — são sempre buscados direto da rede.
    ================================================================ */
 
-const CACHE_VERSION = 'iptv-live-v3';
+const CACHE_VERSION = 'iptv-live-v4';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const API_CACHE = `${CACHE_VERSION}-api`;
 
@@ -18,6 +18,7 @@ const SHELL_FILES = [
   './index.html',
   './style.css',
   './app.js',
+  './config.js',
   './sw.js',
   './manifest.json',
   './icon-192.png',

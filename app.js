@@ -11,6 +11,7 @@ const API = {
   countries: 'https://iptv-org.github.io/api/countries.json',
   categories: 'https://iptv-org.github.io/api/categories.json',
 };
+const PUSH_API_BASE = String(window.IPTV_CONFIG?.pushApiBase || '').replace(/\/$/, '');
 
 const FAV_KEY = 'iptv_live_favorites';
 const HISTORY_KEY = 'iptv_live_watch_history';
@@ -51,6 +52,7 @@ const state = {
   epg: [],
   epgUrl: localStorage.getItem(EPG_URL_KEY) || '',
   notifications: localStorage.getItem(NOTIFY_KEY) === 'enabled',
+  pushSubscription: null,
 };
 
 /* ---------------------------------------------------------------
@@ -94,6 +96,7 @@ init();
 async function init() {
   registerServiceWorker();
   bindEvents();
+  hydratePushSubscription().catch(() => {});
 
   try {
     const [channelsRaw, streamsRaw, countriesRaw, categoriesRaw] = await Promise.all([
@@ -133,6 +136,17 @@ async function init() {
   } catch (err) {
     console.error(err);
     el.status.textContent = 'Falha ao carregar canais. Verifique sua conexão.';
+  }
+}
+
+async function hydratePushSubscription() {
+  if (!PUSH_API_BASE || !('serviceWorker' in navigator)) return;
+  const registration = await navigator.serviceWorker.ready;
+  state.pushSubscription = await registration.pushManager.getSubscription();
+  if (!state.pushSubscription && state.notifications) {
+    state.notifications = false;
+    localStorage.setItem(NOTIFY_KEY, 'disabled');
+    updateNotificationButton();
   }
 }
 
@@ -366,11 +380,47 @@ function configureEPGSource() {
 async function toggleNotifications() {
   if (!('Notification' in window)) { el.epgStatus.textContent = 'Este navegador não suporta notificações.'; return; }
   if (Notification.permission === 'denied') { el.epgStatus.textContent = 'Notificações bloqueadas nas configurações do navegador.'; return; }
+  try {
+    if (PUSH_API_BASE) {
+      state.pushSubscription = await subscribeToPush();
+      state.notifications = true;
+    } else {
+      const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+      state.notifications = permission === 'granted';
+    }
+    localStorage.setItem(NOTIFY_KEY, state.notifications ? 'enabled' : 'disabled');
+    updateNotificationButton();
+    if (state.notifications) notify('IPTV Live', PUSH_API_BASE ? 'Notificações push ativadas.' : 'Notificações locais ativadas.');
+  } catch (error) {
+    console.error(error);
+    el.epgStatus.textContent = error.message || 'Não foi possível ativar as notificações.';
+  }
+}
+
+function urlBase64ToUint8Array(value) {
+  const padding = '='.repeat((4 - value.length % 4) % 4);
+  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  return Uint8Array.from([...raw].map(char => char.charCodeAt(0)));
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Este navegador não suporta Web Push.');
   const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
-  state.notifications = permission === 'granted';
-  localStorage.setItem(NOTIFY_KEY, state.notifications ? 'enabled' : 'disabled');
-  updateNotificationButton();
-  if (state.notifications) notify('IPTV Live', 'Notificações ativadas para novidades, favoritos e programação.');
+  if (permission !== 'granted') throw new Error('Permissão de notificação não concedida.');
+  const registration = await navigator.serviceWorker.ready;
+  const keyResponse = await fetch(`${PUSH_API_BASE}/api/push/public-key`);
+  if (!keyResponse.ok) throw new Error('Não foi possível obter a chave pública VAPID.');
+  const { publicKey } = await keyResponse.json();
+  if (!publicKey) throw new Error('Backend não retornou uma chave pública VAPID.');
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+  const response = await fetch(`${PUSH_API_BASE}/api/push/subscribe`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription, favoriteChannelIds: [...state.favorites], epgNotifications: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+  });
+  if (!response.ok) throw new Error('Backend recusou a inscrição push.');
+  return subscription;
 }
 
 function updateNotificationButton() {
@@ -709,7 +759,16 @@ function toggleCurrentFavorite() {
   if (state.favorites.has(id)) state.favorites.delete(id);
   else state.favorites.add(id);
   localStorage.setItem(FAV_KEY, JSON.stringify([...state.favorites]));
+  if (state.notifications && state.pushSubscription && PUSH_API_BASE) syncPushPreferences().catch(() => {});
   updateFavButton();
+}
+
+async function syncPushPreferences() {
+  const response = await fetch(`${PUSH_API_BASE}/api/push/subscribe`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription: state.pushSubscription, favoriteChannelIds: [...state.favorites], epgNotifications: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+  });
+  if (!response.ok) throw new Error('Não foi possível atualizar as preferências push.');
 }
 
 function loadWatchHistory() {

@@ -35,6 +35,18 @@ As notificações são opcionais e só são solicitadas após o clique no botão
 
 A hospedagem estática no GitHub Pages **não possui um servidor de envio**. Portanto, o comportamento local funciona enquanto a página/app estiver em execução. Para receber Web Push genuíno com o navegador fechado, é necessário um backend próprio que mantenha uma assinatura Push, use chaves VAPID e envie payloads para o service worker. O service worker já aceita payload JSON no formato:
 
+O frontend já está preparado para esse backend. Edite `config.js` e informe apenas a URL pública do serviço:
+
+```js
+window.IPTV_CONFIG = {
+  pushApiBase: 'https://seu-backend.example.com'
+};
+```
+
+Ao clicar no botão de notificações, o app solicita a permissão, busca `GET /api/push/public-key`, cria ou recupera a `PushSubscription` e envia `POST /api/push/subscribe` com a assinatura, IDs dos favoritos, fuso horário e preferência de EPG. Quando um favorito é alterado, as preferências são sincronizadas novamente. Se `pushApiBase` ficar vazio, o app mantém o modo de notificações locais.
+
+O backend deve responder a `GET /api/push/public-key` com `{ "publicKey": "..." }` e aceitar o corpo da inscrição em `POST /api/push/subscribe`. A chave privada VAPID permanece exclusivamente no backend; nunca a coloque em `config.js`, `app.js` ou no repositório.
+
 ```json
 {
   "title": "Esporte ao vivo",
