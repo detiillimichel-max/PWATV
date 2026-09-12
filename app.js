@@ -25,6 +25,7 @@ const state = {
   favorites: new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')),
   filters: { search: '', country: '', category: '' },
   showFavoritesOnly: false,
+  viewMode: localStorage.getItem('iptv_live_view_mode') || 'carousel',
   hls: null,
   currentChannelId: null,
 };
@@ -39,6 +40,7 @@ const el = {
   countryFilter: document.getElementById('countryFilter'),
   categoryFilter: document.getElementById('categoryFilter'),
   status: document.getElementById('statusLine'),
+  viewToggleBtn: document.getElementById('viewToggleBtn'),
   favToggleBtn: document.getElementById('favToggleBtn'),
 
   modal: document.getElementById('playerModal'),
@@ -178,6 +180,11 @@ function renderGrid() {
   } else {
     el.status.textContent = `${state.channels.length} canais disponíveis`;
   }
+  el.rows.classList.toggle('grid-mode', state.viewMode === 'grid');
+  el.viewToggleBtn.classList.toggle('active', state.viewMode === 'grid');
+  el.viewToggleBtn.textContent = state.viewMode === 'grid' ? '☰' : '▦';
+  el.viewToggleBtn.title = state.viewMode === 'grid' ? 'Alternar para carrossel' : 'Alternar para grade';
+  el.viewToggleBtn.setAttribute('aria-label', el.viewToggleBtn.title);
   if (filtered.length === 0) return;
 
   const frag = document.createDocumentFragment();
@@ -333,6 +340,12 @@ function bindEvents() {
 
   el.categoryFilter.addEventListener('change', () => {
     state.filters.category = el.categoryFilter.value;
+    renderGrid();
+  });
+
+  el.viewToggleBtn.addEventListener('click', () => {
+    state.viewMode = state.viewMode === 'grid' ? 'carousel' : 'grid';
+    localStorage.setItem('iptv_live_view_mode', state.viewMode);
     renderGrid();
   });
 
