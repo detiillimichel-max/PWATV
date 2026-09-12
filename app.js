@@ -314,8 +314,9 @@ function getFilteredChannels() {
 function renderGrid() {
   const filtered = getFilteredChannels();
   el.rows.innerHTML = '';
-  el.empty.classList.toggle('hidden', filtered.length > 0);
   const hasActiveFilter = state.filters.search || state.filters.country || state.filters.category || state.showFavoritesOnly;
+  const showFixedLibraries = !hasActiveFilter;
+  el.empty.classList.toggle('hidden', filtered.length > 0 || showFixedLibraries);
   if (hasActiveFilter) {
     el.status.textContent = `${filtered.length} ${filtered.length === 1 ? t('foundOne') : t('foundMany')}`;
   } else {
@@ -326,7 +327,6 @@ function renderGrid() {
   el.viewToggleBtn.textContent = state.viewMode === 'grid' ? '☰' : '▦';
   el.viewToggleBtn.title = state.viewMode === 'grid' ? t('carouselView') : t('gridView');
   el.viewToggleBtn.setAttribute('aria-label', el.viewToggleBtn.title);
-  if (filtered.length === 0) return;
 
   const frag = document.createDocumentFragment();
 
@@ -343,6 +343,12 @@ function renderGrid() {
       .map(item => byId.get(item.id)).filter(Boolean).slice(0, 12);
     if (recent.length) frag.appendChild(buildCarouselRow(t('recent'), recent));
     if (mostWatched.length) frag.appendChild(buildCarouselRow(t('mostWatched'), mostWatched));
+  }
+
+  // As bibliotecas fixas continuam acessíveis mesmo se a API de streams estiver vazia.
+  if (filtered.length === 0) {
+    el.rows.appendChild(frag);
+    return;
   }
 
   // Linha de favoritos no topo (só quando não estamos já filtrando "só favoritos")
@@ -437,7 +443,15 @@ function closeExternalCard() {
 
 function navigateSection(section) {
   document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.section === section));
-  if (section === 'channels') document.querySelector('main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (section === 'channels') {
+    state.filters = { search: '', country: '', category: '' };
+    state.showFavoritesOnly = false;
+    el.search.value = '';
+    el.countryFilter.value = '';
+    el.categoryFilter.value = '';
+    renderGrid();
+    document.querySelector('main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   if (section === 'weather') document.querySelector('.weather-card')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' });
   if (section === 'radio') openExternalCard(EXTERNAL_CARDS.find(item => item.title === 'Rádio América'));
   if (section === 'ai') openExternalCard(EXTERNAL_CARDS.find(item => item.title === 'Neural iA'));
