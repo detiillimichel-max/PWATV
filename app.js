@@ -148,13 +148,21 @@ function populateFilterOptions() {
    --------------------------------------------------------------- */
 function getFilteredChannels() {
   const { search, country, category } = state.filters;
+  const searchTerms = search.split(/\s+/).filter(Boolean);
   return state.channels.filter(c => {
     if (state.showFavoritesOnly && !state.favorites.has(c.id)) return false;
     if (country && c.country !== country) return false;
     if (category && c.category !== category) return false;
-    if (search) {
-      const haystack = (c.name + ' ' + (state.countries[c.country] || '')).toLowerCase();
-      if (!haystack.includes(search)) return false;
+    if (searchTerms.length) {
+      const haystack = [
+        c.name,
+        c.id,
+        c.country,
+        state.countries[c.country],
+        c.category,
+        state.categories[c.category],
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!searchTerms.every(term => haystack.includes(term))) return false;
     }
     return true;
   });
@@ -164,6 +172,12 @@ function renderGrid() {
   const filtered = getFilteredChannels();
   el.rows.innerHTML = '';
   el.empty.classList.toggle('hidden', filtered.length > 0);
+  const hasActiveFilter = state.filters.search || state.filters.country || state.filters.category || state.showFavoritesOnly;
+  if (hasActiveFilter) {
+    el.status.textContent = `${filtered.length} ${filtered.length === 1 ? 'canal encontrado' : 'canais encontrados'}`;
+  } else {
+    el.status.textContent = `${state.channels.length} canais disponíveis`;
+  }
   if (filtered.length === 0) return;
 
   const frag = document.createDocumentFragment();
@@ -307,13 +321,9 @@ function flagForCountry(code) {
    EVENTOS DE UI
    --------------------------------------------------------------- */
 function bindEvents() {
-  let searchDebounce;
   el.search.addEventListener('input', () => {
-    clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => {
-      state.filters.search = el.search.value.trim().toLowerCase();
-      renderGrid();
-    }, 200);
+    state.filters.search = el.search.value.trim().toLowerCase();
+    renderGrid();
   });
 
   el.countryFilter.addEventListener('change', () => {
