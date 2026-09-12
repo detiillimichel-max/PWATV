@@ -24,6 +24,20 @@ PWA responsivo para descobrir e assistir canais de televisão ao vivo diretament
 | EPG | Painel de grade horária com fonte JSON configurável e cache local. |
 | PWA/offline | Manifesto instalável e cache do app shell pelo service worker. |
 
+## Gerenciamento central de traduções
+
+As traduções ficam em `locales/pt-BR.json`, `locales/en.json` e `locales/es.json`. O arquivo `locales.js` é gerado automaticamente e não deve ser editado manualmente; ele é carregado antes de `app.js` pelo PWA.
+
+Use o CLI para administrar os idiomas:
+
+```bash
+node scripts/i18n.mjs list
+node scripts/i18n.mjs validate
+node scripts/i18n.mjs build
+```
+
+O comando `validate` verifica chaves obrigatórias e garante que todos os idiomas tenham exatamente a mesma estrutura. O comando `build` gera o bundle `locales.js` consumido pelo navegador. Para adicionar um idioma, copie um JSON existente, traduza os valores, valide e gere o bundle novamente.
+
 ## Uso
 
 Abra [a aplicação publicada](https://detiillimichel-max.github.io/PWATV/?v1). Use o campo de busca para filtrar os canais enquanto digita. O botão `▦` alterna para grade, `★` mostra favoritos, `♢` solicita notificações e `▤` abre a programação.
