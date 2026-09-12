@@ -101,3 +101,83 @@ git add .
 git commit -m "mensagem da alteração"
 git push origin main
 ```
+
+_______________
+_______________
+_______________
+
+Implementações concluídas e publicadas no repositório.
+
+### Melhorias realizadas
+
+- **Nomes dos canais com melhor contraste**
+  - Texto branco de alta legibilidade.
+  - Sombra sutil para facilitar visualização sobre diferentes fundos.
+  - Mantida a identificação visual por país, gênero e status.
+
+- **Notificações**
+  - Botão para ativar notificações após consentimento do usuário.
+  - Avisos para:
+    - Novos canais detectados.
+    - Programas EPG próximos em canais favoritos.
+    - Atualizações recebidas via Push API.
+  - Service Worker preparado para receber notificações push com payload JSON.
+  - Ícone e clique da notificação configurados para reabrir o PWA.
+
+- **EPG / grade horária**
+  - Novo painel de programação.
+  - Fonte JSON configurável pelo usuário.
+  - Cache local da última programação válida.
+  - Conversão para horário local.
+  - Sanitização dos dados antes da renderização.
+  - Suporte aos formatos:
+    - Array direto.
+    - Objeto com `programmes`.
+    - Objeto com `programs`.
+
+- **Documentação**
+  - README reescrito com todos os recursos:
+    - Player HLS.
+    - Carrossel.
+    - Grade.
+    - Busca em tempo real.
+    - Filtros.
+    - Gêneros.
+    - Prévia dos cards.
+    - Favoritos.
+    - Histórico.
+    - Picture-in-Picture.
+    - Chromecast.
+    - Notificações.
+    - EPG.
+    - PWA/offline.
+    - Privacidade e armazenamento local.
+    - Limitações de CORS, EPG e Web Push.
+    - Formato JSON esperado para EPG.
+    - Instruções de desenvolvimento e publicação.
+
+### Observação importante sobre Push
+
+O GitHub Pages permite que o PWA receba notificações enquanto estiver aberto, mas **push real com o navegador fechado exige um backend próprio com VAPID**. O Service Worker já está preparado para receber esse tipo de evento quando o backend for conectado.
+
+### Skill reutilizável criada
+
+A skill foi criada, validada com sucesso pelo `quick_validate.py` e documenta padrões reutilizáveis para evolução de PWAs de TV:
+
+[pwa-tv-streaming/SKILL.md](/home/ubuntu/skills/pwa-tv-streaming/SKILL.md)
+
+### Commit publicado
+
+**Commit:** `0e5d994 — feat: add notifications and EPG documentation`
+
+Arquivos atualizados:
+
+- [README.md](/home/ubuntu/PWATV/README.md)
+- [index.html](/home/ubuntu/PWATV/index.html)
+- [app.js](/home/ubuntu/PWATV/app.js)
+- [style.css](/home/ubuntu/PWATV/style.css)
+- [sw.js](/home/ubuntu/PWATV/sw.js)
+
+Aplicação:
+
+[https://detiillimichel-max.github.io/PWATV/?v1](https://detiillimichel-max.github.io/PWATV/?v1)
