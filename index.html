@@ -26,6 +26,8 @@
   </div>
 
   <button id="viewToggleBtn" class="icon-btn view-toggle" title="Alternar para grade" aria-label="Alternar para grade">▦</button>
+  <button id="notifyBtn" class="icon-btn" title="Ativar notificações" aria-label="Ativar notificações">♢</button>
+  <button id="epgBtn" class="icon-btn" title="Abrir programação EPG" aria-label="Abrir programação EPG">▤</button>
   <button id="favToggleBtn" class="icon-btn" title="Ver favoritos" aria-label="Ver favoritos">★</button>
 </header>
 
@@ -44,6 +46,16 @@
     <span>Tente limpar a busca ou trocar os filtros.</span>
   </div>
 </main>
+
+<aside id="epgPanel" class="epg-panel hidden" aria-label="Programação EPG">
+  <div class="epg-head">
+    <div><span class="eyebrow">GRADE HORÁRIA</span><h2>Programação</h2></div>
+    <button id="epgCloseBtn" class="icon-btn" title="Fechar programação" aria-label="Fechar programação">✕</button>
+  </div>
+  <p id="epgStatus" class="epg-status">Nenhuma fonte EPG configurada.</p>
+  <div id="epgList" class="epg-list"></div>
+  <button id="epgSourceBtn" class="text-btn">Configurar fonte EPG</button>
+</aside>
 
 <!-- ============================== PLAYER MODAL ============================== -->
 <div id="playerModal" class="player-modal hidden">

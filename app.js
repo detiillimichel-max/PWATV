@@ -16,6 +16,10 @@ const FAV_KEY = 'iptv_live_favorites';
 const HISTORY_KEY = 'iptv_live_watch_history';
 const HISTORY_LIMIT = 60;
 const FEATURED_LIMIT = 12;
+const EPG_URL_KEY = 'iptv_live_epg_url';
+const EPG_CACHE_KEY = 'iptv_live_epg_cache';
+const NOTIFY_KEY = 'iptv_live_notifications';
+const SEEN_CHANNELS_KEY = 'iptv_live_seen_channels';
 const ROW_LIMIT = 40; // limite de canais exibidos por carrossel (performance mobile)
 const GENRE_ORDER = ['Notícias', 'Esportes', 'Filmes', 'Infantil', 'Entretenimento', 'Documentários', 'Música', 'Geral'];
 const GENRE_RULES = [
@@ -44,6 +48,9 @@ const state = {
   hls: null,
   currentChannelId: null,
   castReady: false,
+  epg: [],
+  epgUrl: localStorage.getItem(EPG_URL_KEY) || '',
+  notifications: localStorage.getItem(NOTIFY_KEY) === 'enabled',
 };
 
 /* ---------------------------------------------------------------
@@ -66,6 +73,13 @@ const el = {
   playerMeta: document.getElementById('playerMeta'),
   playerPipBtn: document.getElementById('playerPipBtn'),
   playerCastBtn: document.getElementById('playerCastBtn'),
+  notifyBtn: document.getElementById('notifyBtn'),
+  epgBtn: document.getElementById('epgBtn'),
+  epgPanel: document.getElementById('epgPanel'),
+  epgCloseBtn: document.getElementById('epgCloseBtn'),
+  epgStatus: document.getElementById('epgStatus'),
+  epgList: document.getElementById('epgList'),
+  epgSourceBtn: document.getElementById('epgSourceBtn'),
   playerFavBtn: document.getElementById('playerFavBtn'),
   playerCloseBtn: document.getElementById('playerCloseBtn'),
   overlay: document.getElementById('playerOverlay'),
@@ -113,6 +127,9 @@ async function init() {
     populateFilterOptions();
     el.status.textContent = `${state.channels.length} canais disponíveis`;
     renderGrid();
+    await loadEPG();
+    checkNewChannelNotifications();
+    checkEPGNotifications();
   } catch (err) {
     console.error(err);
     el.status.textContent = 'Falha ao carregar canais. Verifique sua conexão.';
@@ -132,6 +149,27 @@ function registerServiceWorker() {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     });
   }
+}
+
+async function loadEPG() {
+  if (!state.epgUrl) { renderEPG(); return; }
+  try {
+    const response = await fetch(state.epgUrl, { cache: 'no-store' });
+    if (!response.ok) throw new Error('EPG indisponível');
+    state.epg = normalizeEPG(await response.json());
+    localStorage.setItem(EPG_CACHE_KEY, JSON.stringify(state.epg));
+  } catch (error) {
+    try { state.epg = JSON.parse(localStorage.getItem(EPG_CACHE_KEY) || '[]'); } catch { state.epg = []; }
+    el.epgStatus.textContent = 'Não foi possível atualizar a fonte EPG; exibindo o último cache.';
+  }
+  renderEPG();
+}
+
+function normalizeEPG(data) {
+  const entries = Array.isArray(data) ? data : (data.programmes || data.programs || []);
+  return entries.filter(item => item && item.channelId && item.title && item.start && item.end).map(item => ({
+    channelId: item.channelId, title: String(item.title), start: new Date(item.start).toISOString(), end: new Date(item.end).toISOString(), description: item.description ? String(item.description) : '',
+  })).filter(item => !Number.isNaN(Date.parse(item.start)) && !Number.isNaN(Date.parse(item.end)));
 }
 
 /* ---------------------------------------------------------------
@@ -293,6 +331,73 @@ function streamScore(channel) {
   if (!url.includes('youtube.com') && !url.includes('youtu.be')) score += 2;
   if (channel.logo) score += 1;
   return score;
+}
+
+function renderEPG() {
+  if (!state.epg.length) {
+    el.epgStatus.textContent = state.epgUrl ? 'A fonte não retornou programação compatível.' : 'Configure uma fonte JSON EPG para ver a grade horária.';
+    el.epgList.innerHTML = '';
+    return;
+  }
+  const now = Date.now();
+  const byId = new Map(state.channels.map(channel => [channel.id, channel]));
+  const active = state.epg.filter(item => Date.parse(item.end) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).slice(0, 40);
+  el.epgStatus.textContent = `${active.length} programas · horário local`;
+  el.epgList.innerHTML = active.map(item => {
+    const channel = byId.get(item.channelId);
+    const channelName = channel ? escapeHtml(channel.name) : escapeHtml(item.channelId);
+    const title = escapeHtml(item.title);
+    const time = `${formatTime(item.start)} – ${formatTime(item.end)}`;
+    return `<article class="epg-item"><div class="epg-time">${time}</div><div><strong>${title}</strong><span>${channelName}</span></div></article>`;
+  }).join('');
+}
+
+function formatTime(value) { return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)); }
+
+function configureEPGSource() {
+  const url = window.prompt('Cole a URL de uma fonte JSON EPG (ou deixe vazio para remover):', state.epgUrl);
+  if (url === null) return;
+  state.epgUrl = url.trim();
+  if (state.epgUrl) localStorage.setItem(EPG_URL_KEY, state.epgUrl);
+  else localStorage.removeItem(EPG_URL_KEY);
+  loadEPG();
+}
+
+async function toggleNotifications() {
+  if (!('Notification' in window)) { el.epgStatus.textContent = 'Este navegador não suporta notificações.'; return; }
+  if (Notification.permission === 'denied') { el.epgStatus.textContent = 'Notificações bloqueadas nas configurações do navegador.'; return; }
+  const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  state.notifications = permission === 'granted';
+  localStorage.setItem(NOTIFY_KEY, state.notifications ? 'enabled' : 'disabled');
+  updateNotificationButton();
+  if (state.notifications) notify('IPTV Live', 'Notificações ativadas para novidades, favoritos e programação.');
+}
+
+function updateNotificationButton() {
+  el.notifyBtn.classList.toggle('active', state.notifications);
+  el.notifyBtn.textContent = state.notifications ? '●' : '♢';
+  el.notifyBtn.title = state.notifications ? 'Notificações ativadas' : 'Ativar notificações';
+}
+
+function notify(title, body) {
+  if (!state.notifications || Notification.permission !== 'granted') return;
+  if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body, icon: './icon-192.png', tag: `iptv-${title}` })).catch(() => new Notification(title, { body }));
+  else new Notification(title, { body });
+}
+
+function checkNewChannelNotifications() {
+  const previous = new Set(JSON.parse(localStorage.getItem(SEEN_CHANNELS_KEY) || '[]'));
+  const newcomers = state.channels.filter(channel => !previous.has(channel.id));
+  if (previous.size && newcomers.length) notify('Novos canais ao vivo', `${newcomers.slice(0, 3).map(channel => channel.name).join(', ')} e outros foram adicionados.`);
+  localStorage.setItem(SEEN_CHANNELS_KEY, JSON.stringify(state.channels.map(channel => channel.id)));
+}
+
+function checkEPGNotifications() {
+  const now = Date.now();
+  state.epg.filter(item => Date.parse(item.start) > now && Date.parse(item.start) - now < 15 * 60 * 1000).forEach(item => {
+    const channel = state.channels.find(candidate => candidate.id === item.channelId);
+    if (channel && state.favorites.has(channel.id)) notify(`Começa em breve: ${channel.name}`, item.title);
+  });
 }
 
 function buildChannelCard(c) {
@@ -477,6 +582,11 @@ function bindEvents() {
   el.playerFavBtn.addEventListener('click', toggleCurrentFavorite);
   el.playerPipBtn.addEventListener('click', togglePictureInPicture);
   el.playerCastBtn.addEventListener('click', castCurrentChannel);
+  el.notifyBtn.addEventListener('click', toggleNotifications);
+  el.epgBtn.addEventListener('click', () => { el.epgPanel.classList.remove('hidden'); renderEPG(); });
+  el.epgCloseBtn.addEventListener('click', () => el.epgPanel.classList.add('hidden'));
+  el.epgSourceBtn.addEventListener('click', configureEPGSource);
+  updateNotificationButton();
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closePlayer();

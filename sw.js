@@ -9,7 +9,7 @@
      entram no cache — são sempre buscados direto da rede.
    ================================================================ */
 
-const CACHE_VERSION = 'iptv-live-v2';
+const CACHE_VERSION = 'iptv-live-v3';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const API_CACHE = `${CACHE_VERSION}-api`;
 
@@ -18,6 +18,7 @@ const SHELL_FILES = [
   './index.html',
   './style.css',
   './app.js',
+  './sw.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -43,6 +44,27 @@ self.addEventListener('activate', (event) => {
       )
     ).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('push', (event) => {
+  let data = { title: 'IPTV Live', body: 'Há novidades nos seus canais.' };
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch { /* payload não JSON: usa fallback */ }
+  event.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: data.tag || 'iptv-live-update',
+    data: { url: data.url || './' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const target = event.notification.data && event.notification.data.url || './';
+    const existing = list.find(client => 'focus' in client);
+    return existing ? existing.focus() : clients.openWindow(target);
+  }));
 });
 
 self.addEventListener('fetch', (event) => {
