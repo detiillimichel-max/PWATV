@@ -15,6 +15,7 @@ const API = {
 const FAV_KEY = 'iptv_live_favorites';
 const HISTORY_KEY = 'iptv_live_watch_history';
 const HISTORY_LIMIT = 60;
+const FEATURED_LIMIT = 12;
 const ROW_LIMIT = 40; // limite de canais exibidos por carrossel (performance mobile)
 const GENRE_ORDER = ['Notícias', 'Esportes', 'Filmes', 'Infantil', 'Entretenimento', 'Documentários', 'Música', 'Geral'];
 const GENRE_RULES = [
@@ -42,6 +43,7 @@ const state = {
   preview: { card: null, video: null, hls: null },
   hls: null,
   currentChannelId: null,
+  castReady: false,
 };
 
 /* ---------------------------------------------------------------
@@ -62,6 +64,8 @@ const el = {
   playerLogo: document.getElementById('playerLogo'),
   playerName: document.getElementById('playerName'),
   playerMeta: document.getElementById('playerMeta'),
+  playerPipBtn: document.getElementById('playerPipBtn'),
+  playerCastBtn: document.getElementById('playerCastBtn'),
   playerFavBtn: document.getElementById('playerFavBtn'),
   playerCloseBtn: document.getElementById('playerCloseBtn'),
   overlay: document.getElementById('playerOverlay'),
@@ -205,6 +209,8 @@ function renderGrid() {
 
   if (!state.showFavoritesOnly && !state.filters.search && !state.filters.country && !state.filters.category) {
     const byId = new Map(state.channels.map(channel => [channel.id, channel]));
+    const featured = state.channels.slice().sort((a, b) => streamScore(b) - streamScore(a)).slice(0, FEATURED_LIMIT);
+    if (featured.length) frag.appendChild(buildCarouselRow('Ao vivo agora', featured));
     const recent = state.history
       .slice().sort((a, b) => b.lastWatched - a.lastWatched)
       .map(item => byId.get(item.id)).filter(Boolean).slice(0, 12);
@@ -277,6 +283,16 @@ function genreForChannel(channel) {
     .filter(Boolean).join(' ').toLowerCase();
   const match = GENRE_RULES.find(rule => rule.terms.some(term => source.includes(term)));
   return match ? match.label : 'Geral';
+}
+
+function streamScore(channel) {
+  const url = (channel.url || '').toLowerCase();
+  let score = 0;
+  if (url.startsWith('https://')) score += 3;
+  if (url.includes('.m3u8')) score += 4;
+  if (!url.includes('youtube.com') && !url.includes('youtu.be')) score += 2;
+  if (channel.logo) score += 1;
+  return score;
 }
 
 function buildChannelCard(c) {
@@ -459,11 +475,21 @@ function bindEvents() {
   el.playerCloseBtn.addEventListener('click', closePlayer);
   el.modal.addEventListener('click', (e) => { if (e.target === el.modal) closePlayer(); });
   el.playerFavBtn.addEventListener('click', toggleCurrentFavorite);
+  el.playerPipBtn.addEventListener('click', togglePictureInPicture);
+  el.playerCastBtn.addEventListener('click', castCurrentChannel);
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closePlayer();
   });
 }
+
+window.__onGCastApiAvailable = (available) => {
+  state.castReady = Boolean(available);
+  if (!el.playerCastBtn) return;
+  el.playerCastBtn.disabled = !state.castReady;
+  el.playerCastBtn.title = state.castReady ? 'Transmitir para Chromecast' : 'Chromecast indisponível neste navegador';
+};
+if (window.cast && window.cast.framework) window.__onGCastApiAvailable(true);
 
 /* ---------------------------------------------------------------
    PLAYER (HLS)
@@ -525,6 +551,35 @@ function closePlayer() {
   el.modal.classList.add('hidden');
   state.currentChannelId = null;
   if (state.channels.length) renderGrid();
+}
+
+async function togglePictureInPicture() {
+  if (!document.pictureInPictureEnabled || (!el.video.src && !el.video.srcObject)) return;
+  try {
+    if (document.pictureInPictureElement) await document.exitPictureInPicture();
+    else await el.video.requestPictureInPicture();
+  } catch (error) {
+    console.warn('Picture-in-Picture indisponível', error);
+  }
+}
+
+function castCurrentChannel() {
+  if (!state.castReady || !window.cast || !window.cast.framework) return;
+  const context = cast.framework.CastContext.getInstance();
+  context.setOptions({
+    receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+    autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+  });
+  context.requestSession().then(() => {
+    const channel = state.channels.find(item => item.id === state.currentChannelId);
+    if (!channel) return;
+    const mediaInfo = new chrome.cast.media.MediaInfo(channel.url, 'application/x-mpegURL');
+    mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
+    mediaInfo.metadata.title = channel.name;
+    mediaInfo.metadata.subtitle = [state.countries[channel.country], state.categories[channel.category]].filter(Boolean).join(' · ');
+    return cast.framework.CastContext.getInstance().getCurrentSession()
+      .loadMedia(new chrome.cast.media.LoadRequest(mediaInfo));
+  }).catch(error => console.warn('Chromecast não conectado', error));
 }
 
 function showOverlay(text) {

@@ -54,6 +54,8 @@
         <strong id="playerName">—</strong>
         <span id="playerMeta">—</span>
       </div>
+      <button id="playerPipBtn" class="icon-btn player-action" title="Picture-in-Picture" aria-label="Ativar Picture-in-Picture">▣</button>
+      <button id="playerCastBtn" class="icon-btn player-action" title="Transmitir para Chromecast" aria-label="Transmitir para Chromecast">◉</button>
       <button id="playerFavBtn" class="icon-btn" title="Favoritar">☆</button>
       <button id="playerCloseBtn" class="icon-btn" title="Fechar" aria-label="Fechar player">✕</button>
     </div>
@@ -68,6 +70,7 @@
 
 <!-- HLS.js: necessário para tocar streams .m3u8 em navegadores sem suporte nativo a HLS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js" defer></script>
+<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" defer></script>
 <script src="app.js" defer></script>
 </body>
 </html>

@@ -283,6 +283,8 @@ main{padding:18px 0 22px 16px;}
 .player-titles{display:flex; flex-direction:column; min-width:0; flex:1;}
 .player-titles strong{font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .player-titles span{font-size:11px; color:var(--text-dim);}
+.player-action{font-size:14px;}
+.player-action:disabled{opacity:.4;cursor:not-allowed;}
 
 .video-wrap{position:relative; width:100%; aspect-ratio:16/9; background:#000;}
 #videoEl{width:100%; height:100%; display:block; background:#000;}
