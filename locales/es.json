@@ -34,5 +34,6 @@
   "weatherNav": "Meteorología",
   "radioNav": "Radio",
   "aiNav": "Neural IA",
+  "newsNav": "Noticias",
   "genres": { "Notícias": "Noticias", "Esportes": "Deportes", "Filmes": "Películas", "Infantil": "Infantil", "Entretenimento": "Entretenimiento", "Documentários": "Documentales", "Música": "Música", "Geral": "General" }
 }

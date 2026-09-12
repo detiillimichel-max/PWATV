@@ -13,6 +13,7 @@ const API = {
 };
 const PUSH_API_BASE = String(window.IPTV_CONFIG?.pushApiBase || '').replace(/\/$/, '');
 const TRANSLATION_API_BASE = String(window.IPTV_CONFIG?.translationApiBase || '').replace(/\/$/, '');
+const NEWS_API_URL = String(window.IPTV_CONFIG?.newsApiUrl || '');
 const EXTERNAL_CARDS = [
   { title: 'Neural iA', subtitle: 'Ferramentas de inteligência artificial', url: 'https://detiillimichel-max.github.io/-Neural-iA/?v1', icon: 'IA', hue: 190 },
   { title: 'Hub de Jogos', subtitle: 'Jogos e entretenimento', url: 'https://detiillimichel-max.github.io/hubs-de-jogos/', icon: 'JG', hue: 275 },
@@ -90,6 +91,8 @@ const state = {
   weather: [],
   externalUrl: '',
   language: resolveLanguage(localStorage.getItem(LANGUAGE_KEY) || detectBrowserLanguage()),
+  news: [],
+  severeAlerts: [],
 };
 
 /* ---------------------------------------------------------------
@@ -217,6 +220,9 @@ async function init() {
     await loadEPG();
     await loadWeather();
     renderGrid();
+    await loadNews();
+    renderGrid();
+    checkSevereWeatherAlerts();
     await translateChannelContent();
     await translateEPGContent();
     checkNewChannelNotifications();
@@ -351,6 +357,7 @@ function renderGrid() {
     frag.appendChild(buildBrazilRow());
     frag.appendChild(buildRadioRow());
     frag.appendChild(buildWeatherRow());
+    frag.appendChild(buildNewsRow());
     const byId = new Map(state.channels.map(channel => [channel.id, channel]));
     const featured = state.channels.slice().sort((a, b) => streamScore(b) - streamScore(a)).slice(0, FEATURED_LIMIT);
     if (featured.length) frag.appendChild(buildCarouselRow(t('featured'), featured));
@@ -367,6 +374,7 @@ function renderGrid() {
   // As bibliotecas fixas continuam acessíveis mesmo se a API de streams estiver vazia.
   if (filtered.length === 0) {
     el.rows.appendChild(frag);
+    window.lucide?.createIcons();
     return;
   }
 
@@ -395,6 +403,7 @@ function renderGrid() {
   }
 
   el.rows.appendChild(frag);
+  window.lucide?.createIcons();
 }
 
 function buildBrazilRow() {
@@ -435,7 +444,7 @@ function buildWeatherRow() {
   row.dataset.section = 'weather';
   const head = document.createElement('div');
   head.className = 'carousel-head';
-  head.innerHTML = '<h2 class="carousel-title"><span class="accent">›</span> ☀️ Meteorologia</h2><span class="carousel-count">capitais brasileiras · Open-Meteo</span>';
+  head.innerHTML = '<h2 class="carousel-title"><span class="accent">›</span> ☀️ Meteorologia</h2><span class="carousel-count">capitais brasileiras · Open-Meteo</span><button class="location-btn" id="locationBtn" title="Usar minha localização" aria-label="Usar minha localização"><i data-lucide="locate-fixed"></i></button>';
   const track = document.createElement('div');
   track.className = 'carousel-track';
   const weatherByState = new Map(state.weather.map(item => [item.state, item]));
@@ -472,6 +481,43 @@ function buildWeatherCard(item) {
   return card;
 }
 
+function buildNewsRow() {
+  const row = document.createElement('section');
+  row.className = 'carousel-row news-row';
+  row.dataset.section = 'news';
+  const head = document.createElement('div');
+  head.className = 'carousel-head';
+  head.innerHTML = '<h2 class="carousel-title"><span class="accent">›</span> 📰 Notícias</h2><span class="carousel-count">fontes públicas</span>';
+  const track = document.createElement('div');
+  track.className = 'carousel-track';
+  const stories = state.news.length ? state.news : [
+    { title: 'CNN Brasil', subtitle: 'Notícias do Brasil e do mundo', url: 'https://www.cnnbrasil.com.br/', hue: 355 },
+    { title: 'g1', subtitle: 'Últimas notícias', url: 'https://g1.globo.com/', hue: 210 },
+    { title: 'Agência Brasil', subtitle: 'Noticiário público nacional', url: 'https://agenciabrasil.ebc.com.br/', hue: 150 },
+  ];
+  stories.slice(0, 12).forEach(story => track.appendChild(buildNewsCard(story)));
+  row.append(head, track);
+  return row;
+}
+
+function buildNewsCard(story) {
+  const card = document.createElement('a');
+  card.className = 'channel-card news-card external-card';
+  card.href = story.url || '#';
+  card.target = '_blank';
+  card.rel = 'noopener noreferrer';
+  card.addEventListener('click', event => { event.preventDefault(); openExternalCard(story); });
+  const cover = document.createElement('div');
+  cover.className = 'channel-cover';
+  cover.style.setProperty('--cover-hue', story.hue || 210);
+  cover.innerHTML = '<span class="cover-badge">NOTÍCIAS</span><span class="external-mark"><i data-lucide="newspaper"></i></span><span class="external-open">↗</span>';
+  const info = document.createElement('div');
+  info.className = 'channel-info';
+  info.innerHTML = `<div class="channel-name">${escapeHtml(story.title)}</div><div class="channel-tag">${escapeHtml(story.subtitle || 'Fonte pública')}</div>`;
+  card.append(cover, info);
+  return card;
+}
+
 function openExternalCard(item) {
   if (!item) return;
   state.externalUrl = item.url;
@@ -500,7 +546,21 @@ function navigateSection(section) {
   }
   if (section === 'weather') document.querySelector('.weather-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   if (section === 'radio') document.querySelector('.radio-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (section === 'news') document.querySelector('.news-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   if (section === 'ai') openExternalCard(EXTERNAL_CARDS.find(item => item.title === 'Neural iA'));
+}
+
+async function detectUserRegion() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async position => {
+    const city = { name: 'Minha localização', state: 'GPS', latitude: position.coords.latitude, longitude: position.coords.longitude };
+    try {
+      const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto`, { cache: 'no-store' });
+      const data = await response.json();
+      state.weather = [{ ...city, temperature: data.current.temperature_2m, code: data.current.weather_code, wind: data.current.wind_speed_10m }, ...state.weather.filter(item => item.state !== 'GPS')];
+      renderGrid();
+    } catch { /* mantém as capitais já carregadas */ }
+  }, () => {}, { enableHighAccuracy: false, timeout: 8000, maximumAge: 15 * 60 * 1000 });
 }
 
 function buildCarouselRow(title, channels) {
@@ -561,6 +621,28 @@ async function loadWeather() {
     } catch { return { ...city }; }
   }));
   state.weather = results;
+}
+
+async function loadNews() {
+  if (!NEWS_API_URL) return;
+  try {
+    const response = await fetch(NEWS_API_URL, { cache: 'no-store' });
+    if (!response.ok) throw new Error('news');
+    const data = await response.json();
+    state.news = (data.hits || data.articles || []).filter(item => item.title || item.story_title).map(item => ({
+      title: item.title || item.story_title,
+      subtitle: item.author ? `Por ${item.author}` : 'Fonte pública',
+      url: item.url || item.story_url || '#',
+      hue: 210,
+    }));
+  } catch { state.news = []; }
+}
+
+function checkSevereWeatherAlerts() {
+  state.severeAlerts = state.weather.filter(item => item.code >= 95 || item.wind >= 60 || item.temperature >= 38 || item.temperature <= 5);
+  if (!state.severeAlerts.length) return;
+  const names = state.severeAlerts.slice(0, 3).map(item => item.name).join(', ');
+  notify('Alerta meteorológico', `Condições severas detectadas em ${names}.`);
 }
 
 function weatherIcon(code) { if (code === undefined) return '☁'; if (code === 0) return '☀'; if (code < 4) return '⛅'; if (code < 80) return '☁'; return '☂'; }
@@ -663,7 +745,7 @@ async function subscribeToPush() {
   if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
   const response = await fetch(`${PUSH_API_BASE}/api/push/subscribe`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subscription, favoriteChannelIds: [...state.favorites], epgNotifications: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    body: JSON.stringify({ subscription, favoriteChannelIds: [...state.favorites], epgNotifications: true, severeWeatherAlerts: true, weatherCities: WEATHER_CITIES.map(city => city.state), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   });
   if (!response.ok) throw new Error('Backend recusou a inscrição push.');
   return subscription;
@@ -891,6 +973,7 @@ function bindEvents() {
   el.externalModal.addEventListener('click', event => { if (event.target === el.externalModal) closeExternalCard(); });
   el.externalOpenBtn.addEventListener('click', () => { if (state.externalUrl) window.open(state.externalUrl, '_blank', 'noopener,noreferrer'); });
   document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => navigateSection(item.dataset.section)));
+  document.addEventListener('click', event => { if (event.target.closest('#locationBtn')) detectUserRegion(); });
   el.notifyBtn.addEventListener('click', toggleNotifications);
   el.epgBtn.addEventListener('click', () => { el.epgPanel.classList.remove('hidden'); renderEPG(); });
   el.epgCloseBtn.addEventListener('click', () => el.epgPanel.classList.add('hidden'));
@@ -1027,7 +1110,7 @@ function toggleCurrentFavorite() {
 async function syncPushPreferences() {
   const response = await fetch(`${PUSH_API_BASE}/api/push/subscribe`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subscription: state.pushSubscription, favoriteChannelIds: [...state.favorites], epgNotifications: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    body: JSON.stringify({ subscription: state.pushSubscription, favoriteChannelIds: [...state.favorites], epgNotifications: true, severeWeatherAlerts: true, weatherCities: WEATHER_CITIES.map(city => city.state), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   });
   if (!response.ok) throw new Error('Não foi possível atualizar as preferências push.');
 }

@@ -55,6 +55,10 @@ Cards externos abrem inicialmente em um modal com `iframe`. Alguns sites enviam 
 
 O carrossel de rádio reúne Rádio América, Jovem Pan, BandNews FM, CBN, Alpha FM, Rádio Gaúcha e Itatiaia. Cada card usa o link oficial da estação e respeita o fallback para nova aba quando a incorporação for bloqueada.
 
+### Notícias públicas
+
+A biblioteca Notícias usa uma fonte pública configurável em `config.js` e apresenta cards com o ícone Lucide `newspaper`. A configuração padrão consulta a API pública do Hacker News filtrando por Brasil; quando a API não responde, o app mantém cards de fallback para CNN Brasil, g1 e Agência Brasil. O usuário pode abrir cada fonte no modal transparente ou em nova aba.
+
 ### Navegação inferior
 
 A barra inferior inspirada em aplicativos de conteúdo usa Lucide Icons e organiza o app por biblioteca:
@@ -62,6 +66,7 @@ A barra inferior inspirada em aplicativos de conteúdo usa Lucide Icons e organi
 - **Canais:** retorna à área principal.
 - **Meteorologia:** rola até o carrossel Open-Meteo com oito capitais brasileiras.
 - **Rádio:** rola até o carrossel de estações brasileiras.
+- **Notícias:** rola até o carrossel de cards de notícias públicas.
 - **Neural IA:** abre o card Neural iA no modal incorporado ou em nova aba.
 
 ### Favoritos e histórico
@@ -136,6 +141,8 @@ O frontend chama `POST /api/translate`:
 
 A resposta deve conter `translation` ou `translatedText`. Se a API não estiver configurada ou falhar, o texto original permanece visível.
 
+A fonte de notícias pode ser trocada em `config.js` com `newsApiUrl`. O formato recomendado é compatível com resultados `hits` do Hacker News Algolia ou `articles` de APIs de notícias. Cada item deve fornecer `title`, `url` e, opcionalmente, `author` ou `description`.
+
 ### Clima
 
 O carrossel meteorológico usa a API Open-Meteo para obter condições atuais de São Paulo, Rio de Janeiro, Belo Horizonte, Brasília, Salvador, Recife, Porto Alegre e Manaus:
@@ -145,6 +152,10 @@ https://api.open-meteo.com/v1/forecast
 ```
 
 São utilizados `latitude`, `longitude`, `current`, `weather_code` e `timezone=auto`. Não é necessária chave de API para o uso previsto.
+
+O botão de localização usa a API de geolocalização do navegador somente após ação explícita do usuário. Se autorizado, adiciona um card “Minha localização” ao carrossel sem enviar coordenadas a um servidor próprio.
+
+O app faz triagem local de condições severas — tempestades, chuva intensa, vento acima de 60 km/h e temperaturas extremas — nas capitais cadastradas. Com Web Push configurado, a inscrição também envia ao backend as capitais monitoradas e a preferência `severeWeatherAlerts`. Para alertas com o navegador fechado, o backend precisa consultar Open-Meteo periodicamente e enviar o Push; o frontend não consegue executar essa verificação quando está encerrado.
 
 ### Notificações e Web Push
 

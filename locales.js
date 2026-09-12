@@ -36,6 +36,7 @@ window.IPTV_LOCALES = {
     "weatherNav": "Weather",
     "radioNav": "Radio",
     "aiNav": "Neural AI",
+    "newsNav": "News",
     "genres": {
       "Notícias": "News",
       "Esportes": "Sports",
@@ -83,6 +84,7 @@ window.IPTV_LOCALES = {
     "weatherNav": "Meteorología",
     "radioNav": "Radio",
     "aiNav": "Neural IA",
+    "newsNav": "Noticias",
     "genres": {
       "Notícias": "Noticias",
       "Esportes": "Deportes",
@@ -130,6 +132,7 @@ window.IPTV_LOCALES = {
     "weatherNav": "Meteorologia",
     "radioNav": "Rádio",
     "aiNav": "Neural IA",
+    "newsNav": "Notícias",
     "genres": {
       "Notícias": "Notícias",
       "Esportes": "Esportes",

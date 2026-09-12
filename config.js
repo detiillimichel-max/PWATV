@@ -4,4 +4,6 @@ window.IPTV_CONFIG = {
   pushApiBase: '',
   // Endpoint opcional com POST /api/translate { text, target }.
   translationApiBase: '',
+  // API pública de notícias. O fallback usa links editoriais oficiais.
+  newsApiUrl: 'https://hn.algolia.com/api/v1/search_by_date?query=Brazil&tags=story&hitsPerPage=12',
 };
