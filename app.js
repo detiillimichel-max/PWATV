@@ -21,6 +21,8 @@ const EPG_URL_KEY = 'iptv_live_epg_url';
 const EPG_CACHE_KEY = 'iptv_live_epg_cache';
 const NOTIFY_KEY = 'iptv_live_notifications';
 const SEEN_CHANNELS_KEY = 'iptv_live_seen_channels';
+const LANGUAGE_KEY = 'iptv_live_language';
+const SUPPORTED_LANGUAGES = ['pt-BR', 'en', 'es'];
 const ROW_LIMIT = 40; // limite de canais exibidos por carrossel (performance mobile)
 const GENRE_ORDER = ['Notícias', 'Esportes', 'Filmes', 'Infantil', 'Entretenimento', 'Documentários', 'Música', 'Geral'];
 const GENRE_RULES = [
@@ -54,7 +56,7 @@ const state = {
   epgUrl: localStorage.getItem(EPG_URL_KEY) || '',
   notifications: localStorage.getItem(NOTIFY_KEY) === 'enabled',
   pushSubscription: null,
-  language: localStorage.getItem('iptv_live_language') || (navigator.language.startsWith('es') ? 'es' : navigator.language.startsWith('en') ? 'en' : 'pt-BR'),
+  language: resolveLanguage(localStorage.getItem(LANGUAGE_KEY) || detectBrowserLanguage()),
 };
 
 /* ---------------------------------------------------------------
@@ -95,6 +97,23 @@ const el = {
    INIT
    --------------------------------------------------------------- */
 init();
+
+function detectBrowserLanguage() {
+  const candidates = Array.isArray(navigator.languages) && navigator.languages.length
+    ? navigator.languages
+    : [navigator.language];
+  for (const candidate of candidates) {
+    const normalized = String(candidate || '').toLowerCase();
+    if (normalized.startsWith('pt')) return 'pt-BR';
+    if (normalized.startsWith('en')) return 'en';
+    if (normalized.startsWith('es')) return 'es';
+  }
+  return 'pt-BR';
+}
+
+function resolveLanguage(value) {
+  return SUPPORTED_LANGUAGES.includes(value) ? value : 'pt-BR';
+}
 
 function t(key) {
   const dictionary = I18N[state.language] || I18N['pt-BR'];
@@ -626,8 +645,8 @@ function flagForCountry(code) {
    --------------------------------------------------------------- */
 function bindEvents() {
   el.languageSelect.addEventListener('change', () => {
-    state.language = el.languageSelect.value;
-    localStorage.setItem('iptv_live_language', state.language);
+    state.language = resolveLanguage(el.languageSelect.value);
+    localStorage.setItem(LANGUAGE_KEY, state.language);
     applyLanguage();
   });
 
