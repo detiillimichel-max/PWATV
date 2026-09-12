@@ -13,6 +13,8 @@ const API = {
 };
 
 const FAV_KEY = 'iptv_live_favorites';
+const HISTORY_KEY = 'iptv_live_watch_history';
+const HISTORY_LIMIT = 60;
 const ROW_LIMIT = 40; // limite de canais exibidos por carrossel (performance mobile)
 const GENRE_ORDER = ['Notícias', 'Esportes', 'Filmes', 'Infantil', 'Entretenimento', 'Documentários', 'Música', 'Geral'];
 const GENRE_RULES = [
@@ -33,6 +35,7 @@ const state = {
   countries: {},       // code -> nome
   categories: {},       // id -> nome
   favorites: new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')),
+  history: loadWatchHistory(),
   filters: { search: '', country: '', category: '' },
   showFavoritesOnly: false,
   viewMode: localStorage.getItem('iptv_live_view_mode') || 'carousel',
@@ -199,6 +202,18 @@ function renderGrid() {
   if (filtered.length === 0) return;
 
   const frag = document.createDocumentFragment();
+
+  if (!state.showFavoritesOnly && !state.filters.search && !state.filters.country && !state.filters.category) {
+    const byId = new Map(state.channels.map(channel => [channel.id, channel]));
+    const recent = state.history
+      .slice().sort((a, b) => b.lastWatched - a.lastWatched)
+      .map(item => byId.get(item.id)).filter(Boolean).slice(0, 12);
+    const mostWatched = state.history
+      .slice().sort((a, b) => b.plays - a.plays || b.lastWatched - a.lastWatched)
+      .map(item => byId.get(item.id)).filter(Boolean).slice(0, 12);
+    if (recent.length) frag.appendChild(buildCarouselRow('Recentemente assistidos', recent));
+    if (mostWatched.length) frag.appendChild(buildCarouselRow('Mais assistidos', mostWatched));
+  }
 
   // Linha de favoritos no topo (só quando não estamos já filtrando "só favoritos")
   if (!state.showFavoritesOnly) {
@@ -455,6 +470,7 @@ function bindEvents() {
    --------------------------------------------------------------- */
 function openPlayer(channel) {
   stopPreview();
+  recordWatch(channel.id);
   state.currentChannelId = channel.id;
   el.playerName.textContent = channel.name;
   el.playerMeta.textContent = [state.countries[channel.country], state.categories[channel.category]].filter(Boolean).join(' · ') || '—';
@@ -508,6 +524,7 @@ function closePlayer() {
   destroyHls();
   el.modal.classList.add('hidden');
   state.currentChannelId = null;
+  if (state.channels.length) renderGrid();
 }
 
 function showOverlay(text) {
@@ -528,6 +545,30 @@ function toggleCurrentFavorite() {
   else state.favorites.add(id);
   localStorage.setItem(FAV_KEY, JSON.stringify([...state.favorites]));
   updateFavButton();
+}
+
+function loadWatchHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    return Array.isArray(saved) ? saved.filter(item => item && item.id) : [];
+  } catch {
+    return [];
+  }
+}
+
+function recordWatch(id) {
+  const now = Date.now();
+  const existing = state.history.find(item => item.id === id);
+  if (existing) {
+    existing.lastWatched = now;
+    existing.plays = (existing.plays || 0) + 1;
+  } else {
+    state.history.push({ id, lastWatched: now, plays: 1 });
+  }
+  state.history = state.history
+    .sort((a, b) => b.lastWatched - a.lastWatched)
+    .slice(0, HISTORY_LIMIT);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
 }
 
 function updateFavButton() {
