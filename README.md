@@ -20,6 +20,9 @@ PWA responsivo para descobrir e assistir canais de televisão ao vivo diretament
 | Chromecast | Botão de transmissão usando o Google Cast SDK quando disponível. |
 | Notificações | Permissão acionada pelo usuário para avisar novos canais, programação EPG favorita e atualizações enquanto o app está ativo. |
 | i18n | Interface disponível em Português, Inglês e Espanhol, com idioma salvo no navegador e detecção inicial do idioma do sistema. |
+| Brasil em destaque | Primeiro carrossel com canais brasileiros encontrados na API, cards editoriais de SBT, CNN Brasil, gnews, GloboNews e Record, além de cards para os projetos Neural iA, Rádio América e Hub de Jogos. |
+| Clima | Card de previsão atual de São Paulo usando Open-Meteo, sem chave de API. |
+| Tradução dinâmica | Descrições de canais e títulos/descrições EPG podem ser traduzidos por um endpoint configurável em `config.js`, com fallback para o texto original. |
 | Push service worker | O service worker trata eventos push recebidos por um backend compatível com VAPID. |
 | EPG | Painel de grade horária com fonte JSON configurável e cache local. |
 | PWA/offline | Manifesto instalável e cache do app shell pelo service worker. |
@@ -90,6 +93,8 @@ O formato mínimo aceito é um array ou um objeto com `programmes`/`programs`:
 ```
 
 A aplicação converte os horários para o fuso local, sanitiza os textos exibidos e mantém o último EPG válido em cache. Para XMLTV, recomenda-se converter o XML em um endpoint JSON ou usar um proxy/backend, pois o navegador pode bloquear CORS.
+
+Para tradução dinâmica, configure opcionalmente `translationApiBase` em `config.js`. O frontend fará `POST /api/translate` com `{ "text": "...", "target": "en" }` e aceitará `translation` ou `translatedText` na resposta. Sem essa configuração, a aplicação mantém os textos originais e continua funcionando normalmente.
 
 ## Armazenamento local e privacidade
 

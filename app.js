@@ -12,6 +12,20 @@ const API = {
   categories: 'https://iptv-org.github.io/api/categories.json',
 };
 const PUSH_API_BASE = String(window.IPTV_CONFIG?.pushApiBase || '').replace(/\/$/, '');
+const TRANSLATION_API_BASE = String(window.IPTV_CONFIG?.translationApiBase || '').replace(/\/$/, '');
+const WEATHER_API = 'https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto';
+const EXTERNAL_CARDS = [
+  { title: 'Neural iA', subtitle: 'Ferramentas de inteligência artificial', url: 'https://detiillimichel-max.github.io/-Neural-iA/?v1', icon: 'IA', hue: 190 },
+  { title: 'Rádio América', subtitle: 'Rádio e programação ao vivo', url: 'https://detiillimichel-max.github.io/R-dio-America/', icon: 'RA', hue: 32 },
+  { title: 'Hub de Jogos', subtitle: 'Jogos e entretenimento', url: 'https://detiillimichel-max.github.io/hubs-de-jogos/', icon: 'JG', hue: 275 },
+];
+const BRAZIL_BRAND_CARDS = [
+  { title: 'SBT', subtitle: 'Emissora brasileira · site oficial', url: 'https://www.sbt.com.br/', icon: 'SBT', hue: 205 },
+  { title: 'CNN Brasil', subtitle: 'Notícias · site oficial', url: 'https://www.cnnbrasil.com.br/', icon: 'CNN', hue: 355 },
+  { title: 'gnews', subtitle: 'Notícias · site oficial', url: 'https://gnews.globo.com/', icon: 'g', hue: 215 },
+  { title: 'GloboNews', subtitle: 'Notícias · site oficial', url: 'https://g1.globo.com/globonews/', icon: 'GN', hue: 180 },
+  { title: 'Record', subtitle: 'Emissora brasileira · site oficial', url: 'https://www.record.com.br/', icon: 'R', hue: 35 },
+];
 
 const FAV_KEY = 'iptv_live_favorites';
 const HISTORY_KEY = 'iptv_live_watch_history';
@@ -56,6 +70,7 @@ const state = {
   epgUrl: localStorage.getItem(EPG_URL_KEY) || '',
   notifications: localStorage.getItem(NOTIFY_KEY) === 'enabled',
   pushSubscription: null,
+  weather: null,
   language: resolveLanguage(localStorage.getItem(LANGUAGE_KEY) || detectBrowserLanguage()),
 };
 
@@ -78,6 +93,7 @@ const el = {
   playerLogo: document.getElementById('playerLogo'),
   playerName: document.getElementById('playerName'),
   playerMeta: document.getElementById('playerMeta'),
+  playerDescription: document.getElementById('playerDescription'),
   playerPipBtn: document.getElementById('playerPipBtn'),
   playerCastBtn: document.getElementById('playerCastBtn'),
   notifyBtn: document.getElementById('notifyBtn'),
@@ -167,6 +183,7 @@ async function init() {
         logo: c.logo || '',
         country: c.country || '',
         category: (c.categories && c.categories[0]) || '',
+        description: c.description || '',
         url: streamMap.get(c.id),
       }));
 
@@ -174,6 +191,10 @@ async function init() {
     el.status.textContent = `${state.channels.length} canais disponíveis`;
     renderGrid();
     await loadEPG();
+    await loadWeather();
+    renderGrid();
+    await translateChannelContent();
+    await translateEPGContent();
     checkNewChannelNotifications();
     checkEPGNotifications();
   } catch (err) {
@@ -303,6 +324,7 @@ function renderGrid() {
   const frag = document.createDocumentFragment();
 
   if (!state.showFavoritesOnly && !state.filters.search && !state.filters.country && !state.filters.category) {
+    frag.appendChild(buildBrazilRow());
     const byId = new Map(state.channels.map(channel => [channel.id, channel]));
     const featured = state.channels.slice().sort((a, b) => streamScore(b) - streamScore(a)).slice(0, FEATURED_LIMIT);
     if (featured.length) frag.appendChild(buildCarouselRow(t('featured'), featured));
@@ -341,6 +363,51 @@ function renderGrid() {
   }
 
   el.rows.appendChild(frag);
+}
+
+function buildBrazilRow() {
+  const row = document.createElement('section');
+  row.className = 'carousel-row editorial-row';
+  const head = document.createElement('div');
+  head.className = 'carousel-head';
+  head.innerHTML = `<h2 class="carousel-title"><span class="accent">›</span> 🇧🇷 Brasil em destaque</h2><span class="carousel-count">TV · clima · projetos</span>`;
+  const track = document.createElement('div');
+  track.className = 'carousel-track';
+  const brazilTerms = ['sbt', 'globo', 'record', 'band', 'bandnews', 'rede tv', 'redetv', 'cnn brasil', 'gnews', 'globonews', 'jovem pan', 'cultura'];
+  const brazilChannels = state.channels.filter(channel => channel.country === 'BR' && brazilTerms.some(term => channel.name.toLowerCase().includes(term))).sort((a, b) => brazilTerms.findIndex(term => b.name.toLowerCase().includes(term)) - brazilTerms.findIndex(term => a.name.toLowerCase().includes(term))).slice(0, 8);
+  brazilChannels.forEach(channel => track.appendChild(buildChannelCard(channel)));
+  BRAZIL_BRAND_CARDS.forEach(card => track.appendChild(buildExternalCard({ ...card, flag: '🇧🇷' })));
+  EXTERNAL_CARDS.forEach(card => track.appendChild(buildExternalCard(card)));
+  track.appendChild(buildWeatherCard());
+  row.append(head, track);
+  return row;
+}
+
+function buildExternalCard(item) {
+  const card = document.createElement('a');
+  card.className = 'channel-card external-card';
+  card.href = item.url;
+  card.target = '_blank';
+  card.rel = 'noopener noreferrer';
+  const cover = document.createElement('div');
+  cover.className = 'channel-cover';
+  cover.style.setProperty('--cover-hue', item.hue);
+  cover.innerHTML = `<span class="cover-badge">${item.flag || 'PROJETO'}</span><span class="external-mark">${item.icon}</span><span class="external-open">↗</span>`;
+  const info = document.createElement('div');
+  info.className = 'channel-info';
+  info.innerHTML = `<div class="channel-name">${escapeHtml(item.title)}</div><div class="channel-tag">${escapeHtml(item.subtitle)}</div>`;
+  card.append(cover, info);
+  return card;
+}
+
+function buildWeatherCard() {
+  const card = document.createElement('article');
+  card.className = 'channel-card weather-card';
+  const weather = state.weather;
+  const temperature = weather ? `${Math.round(weather.temperature)}°C` : '…';
+  const condition = weather ? weatherLabel(weather.code) : 'Open-Meteo';
+  card.innerHTML = `<div class="channel-cover" style="--cover-hue:205"><span class="cover-badge">CLIMA</span><span class="weather-icon">${weatherIcon(weather?.code)}</span><span class="weather-temp">${temperature}</span></div><div class="channel-info"><div class="channel-name">São Paulo</div><div class="channel-tag">${condition} · Open-Meteo</div></div>`;
+  return card;
 }
 
 function buildCarouselRow(title, channels) {
@@ -390,6 +457,44 @@ function streamScore(channel) {
   return score;
 }
 
+async function loadWeather() {
+  try {
+    const response = await fetch(WEATHER_API, { cache: 'no-store' });
+    if (!response.ok) throw new Error('weather');
+    const data = await response.json();
+    state.weather = { temperature: data.current.temperature_2m, code: data.current.weather_code };
+  } catch { state.weather = null; }
+}
+
+function weatherIcon(code) { if (code === undefined) return '☁'; if (code === 0) return '☀'; if (code < 4) return '⛅'; if (code < 80) return '☁'; return '☂'; }
+function weatherLabel(code) { if (code === 0) return 'Céu limpo'; if (code < 4) return 'Parcialmente nublado'; if (code < 60) return 'Nublado'; if (code < 80) return 'Chuva'; return 'Precipitação'; }
+
+async function translateText(text) {
+  if (!text || !TRANSLATION_API_BASE || state.language === 'pt-BR') return text;
+  try {
+    const response = await fetch(`${TRANSLATION_API_BASE}/api/translate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, target: state.language }) });
+    if (!response.ok) return text;
+    const data = await response.json();
+    return data.translation || data.translatedText || text;
+  } catch { return text; }
+}
+
+async function translateChannelContent() {
+  if (!TRANSLATION_API_BASE || state.language === 'pt-BR') return;
+  const items = state.channels.filter(channel => channel.description).slice(0, 150);
+  await Promise.all(items.map(async channel => { channel.description = await translateText(channel.description); }));
+  if (items.length) renderGrid();
+}
+
+async function translateEPGContent() {
+  if (!TRANSLATION_API_BASE || state.language === 'pt-BR' || !state.epg.length) return;
+  await Promise.all(state.epg.slice(0, 200).map(async item => {
+    item.title = await translateText(item.title);
+    if (item.description) item.description = await translateText(item.description);
+  }));
+  renderEPG();
+}
+
 function renderEPG() {
   if (!state.epg.length) {
     el.epgStatus.textContent = state.epgUrl ? t('epgUnavailable') : t('noEpg');
@@ -404,8 +509,9 @@ function renderEPG() {
     const channel = byId.get(item.channelId);
     const channelName = channel ? escapeHtml(channel.name) : escapeHtml(item.channelId);
     const title = escapeHtml(item.title);
+    const description = item.description ? `<em>${escapeHtml(item.description)}</em>` : '';
     const time = `${formatTime(item.start)} – ${formatTime(item.end)}`;
-    return `<article class="epg-item"><div class="epg-time">${time}</div><div><strong>${title}</strong><span>${channelName}</span></div></article>`;
+    return `<article class="epg-item"><div class="epg-time">${time}</div><div><strong>${title}</strong><span>${channelName}</span>${description}</div></article>`;
   }).join('');
 }
 
@@ -648,6 +754,8 @@ function bindEvents() {
     state.language = resolveLanguage(el.languageSelect.value);
     localStorage.setItem(LANGUAGE_KEY, state.language);
     applyLanguage();
+    translateChannelContent();
+    translateEPGContent();
   });
 
   el.search.addEventListener('input', () => {
@@ -710,6 +818,7 @@ function openPlayer(channel) {
   state.currentChannelId = channel.id;
   el.playerName.textContent = channel.name;
   el.playerMeta.textContent = [state.countries[channel.country], state.categories[channel.category]].filter(Boolean).join(' · ') || '—';
+  el.playerDescription.textContent = channel.description || '';
   el.playerLogo.src = channel.logo || '';
   el.playerLogo.onerror = () => { el.playerLogo.style.visibility = 'hidden'; };
   el.playerLogo.style.visibility = channel.logo ? 'visible' : 'hidden';

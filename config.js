@@ -2,4 +2,6 @@
 window.IPTV_CONFIG = {
   // Exemplo: 'https://seu-backend.example.com'
   pushApiBase: '',
+  // Endpoint opcional com POST /api/translate { text, target }.
+  translationApiBase: '',
 };
