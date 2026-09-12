@@ -14,6 +14,16 @@ const API = {
 
 const FAV_KEY = 'iptv_live_favorites';
 const ROW_LIMIT = 40; // limite de canais exibidos por carrossel (performance mobile)
+const GENRE_ORDER = ['Notícias', 'Esportes', 'Filmes', 'Infantil', 'Entretenimento', 'Documentários', 'Música', 'Geral'];
+const GENRE_RULES = [
+  { label: 'Notícias', terms: ['news', 'noticia', 'notícias', 'noticias', 'jornal', 'informação', 'informacao', 'business', 'finance', 'weather'] },
+  { label: 'Esportes', terms: ['sport', 'esporte', 'esportes', 'futebol', 'football', 'soccer', 'basket', 'tennis', 'golf', 'motorsport', 'corrida'] },
+  { label: 'Filmes', terms: ['movie', 'movies', 'filme', 'filmes', 'cinema', 'film', 'action', 'western', 'thriller', 'drama'] },
+  { label: 'Infantil', terms: ['kids', 'kid', 'children', 'child', 'infantil', 'cartoon', 'animation', 'anime', 'junior', 'baby'] },
+  { label: 'Documentários', terms: ['documentary', 'documentario', 'documentário', 'science', 'ciência', 'ciencia', 'history', 'historia', 'história', 'nature'] },
+  { label: 'Música', terms: ['music', 'musica', 'música', 'radio', 'dance', 'hits', 'mtv'] },
+  { label: 'Entretenimento', terms: ['entertainment', 'entretenimento', 'reality', 'series', 'série', 'serie', 'comedy', 'comedia', 'comédia', 'lifestyle'] },
+];
 
 /* ---------------------------------------------------------------
    ESTADO
@@ -198,21 +208,20 @@ function renderGrid() {
     }
   }
 
-  // Demais canais agrupados por categoria
+  // Demais canais agrupados por gênero editorial
   const groups = new Map();
   for (const c of filtered) {
-    const key = c.category || 'outros';
+    const key = genreForChannel(c);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(c);
   }
 
   const sortedKeys = [...groups.keys()].sort((a, b) =>
-    (state.categories[a] || a).localeCompare(state.categories[b] || b)
+    GENRE_ORDER.indexOf(a) - GENRE_ORDER.indexOf(b)
   );
 
   for (const key of sortedKeys) {
-    const label = state.categories[key] || key;
-    frag.appendChild(buildCarouselRow(label, groups.get(key)));
+    frag.appendChild(buildCarouselRow(key, groups.get(key)));
   }
 
   el.rows.appendChild(frag);
@@ -248,6 +257,13 @@ function escapeHtml(str) {
   }[ch]));
 }
 
+function genreForChannel(channel) {
+  const source = [channel.name, channel.category, state.categories[channel.category]]
+    .filter(Boolean).join(' ').toLowerCase();
+  const match = GENRE_RULES.find(rule => rule.terms.some(term => source.includes(term)));
+  return match ? match.label : 'Geral';
+}
+
 function buildChannelCard(c) {
   const card = document.createElement('button');
   card.className = 'channel-card';
@@ -268,7 +284,7 @@ function buildChannelCard(c) {
 
   const category = document.createElement('span');
   category.className = 'cover-badge';
-  category.textContent = state.categories[c.category] || 'TV';
+  category.textContent = genreForChannel(c);
 
   const live = document.createElement('span');
   live.className = 'live-badge';
