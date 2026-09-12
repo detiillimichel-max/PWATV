@@ -232,33 +232,75 @@ function buildChannelCard(c) {
   card.setAttribute('type', 'button');
   card.dataset.id = c.id;
 
+  const cover = document.createElement('div');
+  cover.className = 'channel-cover';
+  cover.style.setProperty('--cover-hue', hueForChannel(c.name));
+
+  const category = document.createElement('span');
+  category.className = 'cover-badge';
+  category.textContent = state.categories[c.category] || 'TV';
+
+  const live = document.createElement('span');
+  live.className = 'live-badge';
+  live.innerHTML = '<i></i> AO VIVO';
+
   const logoWrap = document.createElement('div');
+  logoWrap.className = 'channel-logo-wrap';
   if (c.logo) {
     const img = document.createElement('img');
     img.className = 'channel-logo';
     img.loading = 'lazy';
     img.src = c.logo;
     img.alt = '';
-    img.onerror = () => { img.style.display = 'none'; };
+    img.onerror = () => {
+      img.style.display = 'none';
+      logoWrap.classList.add('fallback-wrap');
+      logoWrap.textContent = initials(c.name);
+    };
     logoWrap.appendChild(img);
   } else {
     const fb = document.createElement('div');
     fb.className = 'channel-logo fallback';
-    fb.textContent = c.name.slice(0, 2).toUpperCase();
+    fb.textContent = initials(c.name);
     logoWrap.appendChild(fb);
   }
 
+  const favorite = document.createElement('span');
+  favorite.className = 'card-favorite';
+  favorite.textContent = state.favorites.has(c.id) ? '★' : '☆';
+  if (state.favorites.has(c.id)) favorite.classList.add('is-favorite');
+
+  cover.append(category, live, logoWrap, favorite);
+
+  const info = document.createElement('div');
+  info.className = 'channel-info';
   const name = document.createElement('div');
   name.className = 'channel-name';
   name.textContent = c.name;
 
   const tag = document.createElement('div');
   tag.className = 'channel-tag';
-  tag.textContent = [state.countries[c.country], state.categories[c.category]].filter(Boolean).join(' · ');
+  tag.innerHTML = `<span class="country-flag">${flagForCountry(c.country)}</span>${escapeHtml(state.countries[c.country] || c.country || 'Internacional')}`;
 
-  card.append(logoWrap, name, tag);
+  info.append(name, tag);
+  card.append(cover, info);
   card.addEventListener('click', () => openPlayer(c));
   return card;
+}
+
+function initials(name) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase();
+}
+
+function hueForChannel(name) {
+  let hash = 0;
+  for (const char of name) hash = ((hash << 5) - hash) + char.charCodeAt(0);
+  return Math.abs(hash) % 360;
+}
+
+function flagForCountry(code) {
+  if (!code || code.length !== 2) return '◉';
+  return [...code.toUpperCase()].map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('');
 }
 
 /* ---------------------------------------------------------------
@@ -383,4 +425,3 @@ function updateFavButton() {
   el.playerFavBtn.textContent = active ? '★' : '☆';
   el.playerFavBtn.classList.toggle('active', active);
 }
-
