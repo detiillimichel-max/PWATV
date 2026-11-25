@@ -5,6 +5,7 @@
    mantidas pela comunidade, sem necessidade de chave de API.
    ================================================================ */
 
+const API_BASE = String(window.IPTV_CONFIG?.apiBase || '').replace(/\/$/, '');
 const API = {
   channels: 'https://iptv-org.github.io/api/channels.json',
   streams: 'https://iptv-org.github.io/api/streams.json',
@@ -45,6 +46,16 @@ const BRAZIL_BRAND_CARDS = [
   { title: 'Record', subtitle: 'Emissora brasileira · site oficial', url: 'https://www.record.com.br/', icon: 'R', hue: 35 },
 ];
 
+// Grupo 1: cards independentes que abrem a página oficial, sem incorporar o player.
+const BROADCASTER_CARDS = [
+  { title: 'Jovem Pan', subtitle: 'TV ao vivo · página oficial', url: 'https://jovempan.com.br/ao-vivo/', icon: 'JP', hue: 350 },
+  { title: 'BM&C News', subtitle: 'Notícias e mercado · ao vivo', url: 'https://bmcnews.com.br/bmc-news-ao-vivo/', icon: 'BM&C', hue: 195 },
+  { title: 'Agroplus', subtitle: 'Agronegócio · transmissão oficial', url: 'https://agroplustv.com/', icon: 'AGRO', hue: 95 },
+  { title: 'Record News', subtitle: 'Notícias · página oficial', url: 'https://record.r7.com/', icon: 'RN', hue: 35 },
+  { title: 'Rede Brasil', subtitle: 'TV ao vivo · página oficial', url: 'https://rbtv.com.br/', icon: 'RB', hue: 220 },
+  { title: 'TV Channel Network', subtitle: 'TV 24 horas · página oficial', url: 'https://www.tvchannel.tv.br/', icon: 'TV', hue: 265 },
+];
+
 const FAV_KEY = 'iptv_live_favorites';
 const HISTORY_KEY = 'iptv_live_watch_history';
 const HISTORY_LIMIT = 60;
@@ -72,7 +83,9 @@ const I18N = window.IPTV_LOCALES || {};
    ESTADO
    --------------------------------------------------------------- */
 const state = {
-  channels: [],       // canais já cruzados com sua stream principal
+  channels: [],       // canais normalizados com todas as streams disponíveis
+  streamCandidates: [],
+  streamIndex: 0;
   countries: {},       // code -> nome
   categories: {},       // id -> nome
   favorites: new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')),
@@ -183,37 +196,40 @@ async function init() {
   applyLanguage();
   bindEvents();
   hydratePushSubscription().catch(() => {});
-
   try {
-    const [channelsRaw, streamsRaw, countriesRaw, categoriesRaw] = await Promise.all([
-      fetchJSON(API.channels),
-      fetchJSON(API.streams),
-      fetchJSON(API.countries),
-      fetchJSON(API.categories),
-    ]);
-
-    state.countries = Object.fromEntries(countriesRaw.map(c => [c.code, c.name]));
-    state.categories = Object.fromEntries(categoriesRaw.map(c => [c.id, c.name]));
-
-    // mapa: channel id -> primeira stream utilizável
-    const streamMap = new Map();
-    for (const s of streamsRaw) {
-      if (!s.channel || !s.url) continue;
-      if (!streamMap.has(s.channel)) streamMap.set(s.channel, s.url);
+    let catalog;
+    if (API_BASE) {
+      try { catalog = await fetchJSON(`${API_BASE}/api/channels`); }
+      catch (backendError) { console.warn('API Vercel indisponível; usando fontes públicas diretamente.', backendError); }
     }
-
-    state.channels = channelsRaw
-      .filter(c => streamMap.has(c.id) && c.name)
-      .map(c => ({
-        id: c.id,
-        name: c.name,
-        logo: c.logo || '',
-        country: c.country || '',
-        category: (c.categories && c.categories[0]) || '',
-        description: c.description || '',
-        url: streamMap.get(c.id),
-      }));
-
+    if (!catalog || !Array.isArray(catalog.channels)) {
+      const [channelsRaw, streamsRaw, countriesRaw, categoriesRaw] = await Promise.all([
+        fetchJSON(API.channels), fetchJSON(API.streams), fetchJSON(API.countries), fetchJSON(API.categories),
+      ]);
+      const streamMap = new Map();
+      for (const stream of streamsRaw) {
+        if (!stream.channel || !stream.url) continue;
+        const list = streamMap.get(stream.channel) || [];
+        if (!list.some(item => item.url === stream.url)) list.push({ url: stream.url, ref: stream.ref || '', title: stream.title || '' });
+        streamMap.set(stream.channel, list);
+      }
+      catalog = { channels: channelsRaw.filter(channel => streamMap.has(channel.id)).map(channel => ({ ...channel, streams: streamMap.get(channel.id) || [] })), countries: countriesRaw, categories: categoriesRaw };
+    }
+    const countriesRaw = Array.isArray(catalog.countries) ? catalog.countries : [];
+    const categoriesRaw = Array.isArray(catalog.categories) ? catalog.categories : [];
+    state.countries = Object.fromEntries(countriesRaw.map(country => [country.code, country.name]));
+    state.categories = Object.fromEntries(categoriesRaw.map(category => [category.id, category.name]));
+    state.channels = catalog.channels.filter(channel => channel && channel.id && channel.name).map(channel => {
+      const streams = (Array.isArray(channel.streams) ? channel.streams : []).filter(stream =>
+        stream && typeof stream.url === 'string' && (stream.url.startsWith('http://') || stream.url.startsWith('https://'))
+      );
+      return {
+        id: channel.id, name: channel.name, logo: channel.logo || '', country: channel.country || '',
+        category: (channel.categories && channel.categories[0]) || channel.category || '',
+        description: channel.description || '', streams,
+        url: (streams[0] && streams[0].url) || channel.url || '',
+      };
+    }).filter(channel => channel.url);
     populateFilterOptions();
     el.status.textContent = `${state.channels.length} canais disponíveis`;
     renderGrid();
@@ -358,6 +374,7 @@ function renderGrid() {
     frag.appendChild(buildRadioRow());
     frag.appendChild(buildWeatherRow());
     frag.appendChild(buildNewsRow());
+    frag.appendChild(buildBroadcasterRow());
     const byId = new Map(state.channels.map(channel => [channel.id, channel]));
     const featured = state.channels.slice().sort((a, b) => streamScore(b) - streamScore(a)).slice(0, FEATURED_LIMIT);
     if (featured.length) frag.appendChild(buildCarouselRow(t('featured'), featured));
@@ -424,6 +441,20 @@ function buildBrazilRow() {
   return row;
 }
 
+function buildBroadcasterRow() {
+  const row = document.createElement('section');
+  row.className = 'carousel-row broadcaster-row';
+  row.dataset.section = 'channels';
+  const head = document.createElement('div');
+  head.className = 'carousel-head';
+  head.innerHTML = '<h2 class="carousel-title"><span class="accent">›</span> 📡 Canais ao Vivo — Grupo 1</h2><span class="carousel-count">acesso às páginas oficiais</span>';
+  const track = document.createElement('div');
+  track.className = 'carousel-track';
+  BROADCASTER_CARDS.forEach(item => track.appendChild(buildExternalCard({ ...item, flag: 'AO VIVO', openDirect: true })));
+  row.append(head, track);
+  return row;
+}
+
 function buildRadioRow() {
   const row = document.createElement('section');
   row.className = 'carousel-row radio-row';
@@ -459,7 +490,11 @@ function buildExternalCard(item) {
   card.href = item.url;
   card.target = '_blank';
   card.rel = 'noopener noreferrer';
-  card.addEventListener('click', event => { event.preventDefault(); openExternalCard(item); });
+  card.addEventListener('click', event => {
+    event.preventDefault();
+    if (item.openDirect) window.open(item.url, '_blank', 'noopener,noreferrer');
+    else openExternalCard(item);
+  });
   const cover = document.createElement('div');
   cover.className = 'channel-cover';
   cover.style.setProperty('--cover-hue', item.hue);
@@ -1001,6 +1036,9 @@ function openPlayer(channel) {
   stopPreview();
   recordWatch(channel.id);
   state.currentChannelId = channel.id;
+  state.streamCandidates = (Array.isArray(channel.streams) ? channel.streams : []).map(stream => stream.url).filter(Boolean);
+  if (!state.streamCandidates.length && channel.url) state.streamCandidates = [channel.url];
+  state.streamIndex = 0;
   el.playerName.textContent = channel.name;
   el.playerMeta.textContent = [state.countries[channel.country], state.categories[channel.category]].filter(Boolean).join(' · ') || '—';
   el.playerDescription.textContent = channel.description || '';
@@ -1008,10 +1046,24 @@ function openPlayer(channel) {
   el.playerLogo.onerror = () => { el.playerLogo.style.visibility = 'hidden'; };
   el.playerLogo.style.visibility = channel.logo ? 'visible' : 'hidden';
   updateFavButton();
-
   el.modal.classList.remove('hidden');
-  showOverlay('Conectando ao sinal...');
-  loadStream(channel.url);
+  playNextStream();
+}
+
+function playNextStream() {
+  const url = state.streamCandidates[state.streamIndex];
+  if (!url) { showOverlay('Não foi possível reproduzir as fontes disponíveis deste canal.'); return; }
+  showOverlay(state.streamIndex ? `Tentando fonte alternativa (${state.streamIndex + 1}/${state.streamCandidates.length})...` : 'Conectando ao sinal...');
+  loadStream(url);
+}
+
+function tryNextStream() {
+  if (state.streamIndex + 1 >= state.streamCandidates.length) {
+    showOverlay('Sinal indisponível. Não há outra fonte cadastrada.');
+    return;
+  }
+  state.streamIndex += 1;
+  playNextStream();
 }
 
 function loadStream(url) {
@@ -1022,7 +1074,7 @@ function loadStream(url) {
     // Safari / iOS: suporte nativo a HLS
     video.src = url;
     video.addEventListener('loadedmetadata', hideOverlay, { once: true });
-    video.addEventListener('error', () => showOverlay('Sinal indisponível para este canal.'), { once: true });
+    video.addEventListener('error', () => tryNextStream(), { once: true });
     video.play().catch(() => {});
   } else if (window.Hls && Hls.isSupported()) {
     const hls = new Hls({ maxBufferLength: 20 });
@@ -1034,7 +1086,7 @@ function loadStream(url) {
       video.play().catch(() => {});
     });
     hls.on(Hls.Events.ERROR, (_, data) => {
-      if (data.fatal) showOverlay('Sinal indisponível para este canal.');
+      if (data.fatal && state.hls === hls) tryNextStream();
     });
   } else {
     showOverlay('Seu navegador não suporta reprodução deste sinal.');
@@ -1054,6 +1106,8 @@ function closePlayer() {
   destroyHls();
   el.modal.classList.add('hidden');
   state.currentChannelId = null;
+  state.streamCandidates = [];
+  state.streamIndex = 0;
   if (state.channels.length) renderGrid();
 }
 
@@ -1077,7 +1131,8 @@ function castCurrentChannel() {
   context.requestSession().then(() => {
     const channel = state.channels.find(item => item.id === state.currentChannelId);
     if (!channel) return;
-    const mediaInfo = new chrome.cast.media.MediaInfo(channel.url, 'application/x-mpegURL');
+    const castUrl = state.streamCandidates[state.streamIndex] || channel.url;
+    const mediaInfo = new chrome.cast.media.MediaInfo(castUrl, 'application/x-mpegURL');
     mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
     mediaInfo.metadata.title = channel.name;
     mediaInfo.metadata.subtitle = [state.countries[channel.country], state.categories[channel.category]].filter(Boolean).join(' · ');
