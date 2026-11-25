@@ -1,6 +1,8 @@
 /* Configuração pública do frontend. Nunca coloque a chave privada VAPID aqui. */
 window.IPTV_CONFIG = {
-  // Exemplo: 'https://seu-backend.example.com'
+  // Backend público da Vercel. Não colocar segredos neste arquivo.
+  apiBase: 'https://pwatv.vercel.app',
+  // Endpoints opcionais de notificações e tradução.
   pushApiBase: '',
   // Endpoint opcional com POST /api/translate { text, target }.
   translationApiBase: '',
