@@ -85,7 +85,7 @@ const I18N = window.IPTV_LOCALES || {};
 const state = {
   channels: [],       // canais normalizados com todas as streams disponíveis
   streamCandidates: [],
-  streamIndex: 0;
+  streamIndex: 0,
   countries: {},       // code -> nome
   categories: {},       // id -> nome
   favorites: new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')),
