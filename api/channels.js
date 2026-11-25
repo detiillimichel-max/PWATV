@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     for (const stream of streamsRaw) {
       if (!stream.channel || !stream.url) continue;
       const list = streamMap.get(stream.channel) || [];
-      if (!list.some(item => item.url === stream.url)) list.push({ url: stream.url, ref: stream.ref || '', title: stream.title || '' });
+      if (!list.some(item => item.url === stream.url)) list.push({ url: stream.url, ref: stream.ref || '', title: stream.title || '', quality: stream.quality || '', userAgent: stream.userAgent || '', referrer: stream.referrer || '' });
       streamMap.set(stream.channel, list);
     }
 
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         country: channel.country || '',
         categories: Array.isArray(channel.categories) ? channel.categories : [],
         description: channel.description || '',
-        streams: streamMap.get(channel.id) || [],
+        streams: (streamMap.get(channel.id) || []).map((stream, index) => ({ ...stream, priority: index + 1 })),
       }));
 
     const payload = {
